@@ -11,16 +11,19 @@ function requireAdmin(req, res, next) {
     }
 }
 
-// API Endpoint to handle admin login
+// API Endpoint to handle// Admin login
 router.post('/login', (req, res) => {
     const { username, password } = req.body;
-    // Hardcoded credentials for simplicity
-    if (username === 'admin' && password === 'password') {
-        req.session.isAdmin = true;
-        res.json({ success: true, message: 'Logged in successfully' });
-    } else {
-        res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
+    db.get("SELECT * FROM users WHERE username = ? AND password = ?", [username, password], (err, row) => {
+        if (err) {
+            res.status(500).json({ success: false, message: 'Server error' });
+        } else if (row) {
+            req.session.isAdmin = true;
+            res.json({ success: true, message: 'Logged in successfully' });
+        } else {
+            res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+    });
 });
 
 // API Endpoint to check auth status
