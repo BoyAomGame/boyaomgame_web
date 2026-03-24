@@ -20,6 +20,11 @@ app.use(session({
 // Because the files are in `root/parrot/`, visiting `http://localhost:3000/parrot/` works automatically via this single command!
 app.use(express.static(path.join(__dirname, 'root')));
 
+// SPA Fallback for UserLooker React application
+app.get(/^\/userlooker(?:\/.*)?$/, (req, res) => {
+    res.sendFile(path.join(__dirname, 'root', 'userlooker', 'index.html'));
+});
+
 // Import the modular API logic for the Parrot System
 const parrotRouter = require('./website_sys/parrot_system/router');
 
