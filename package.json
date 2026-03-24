@@ -19,6 +19,8 @@
   "homepage": "https://github.com/BoyAomGame/boyaomgame_web#readme",
   "description": "",
   "dependencies": {
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "sqlite3": "^6.0.1"
   }
 }
