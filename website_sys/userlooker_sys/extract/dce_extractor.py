@@ -432,6 +432,9 @@ def process_json_file(filepath: Path) -> dict:
         del user["_guilds_seen"]
         del user["_discord_ids_seen"]
     
+    for user in unknown_users.values():
+        del user["_guilds_seen"]
+    
     # Flush remaining messages
     if all_messages:
         messages_saved_in_file += save_messages_to_db(all_messages)
@@ -464,9 +467,11 @@ def save_to_mongodb(known: list, unknown: list):
             {
                 "$set": {
                     "RobloxUsername": user["RobloxUsername"],
-                    "DiscordAccounts": user["DiscordAccounts"],
                     "LastMsgFound": user["LastMsgFound"],
                     "GuildCount": user["GuildCount"]
+                },
+                "$addToSet": {
+                    "DiscordAccounts": {"$each": user["DiscordAccounts"]}
                 },
                 "$min": {"FirstMsgFound": user["FirstMsgFound"]},
                 "$inc": {"TotalMsg": user["TotalMsg"]}
@@ -479,7 +484,7 @@ def save_to_mongodb(known: list, unknown: list):
         batch = known_operations[i:i + BATCH_SIZE]
         if batch:
             result = known_users_collection.bulk_write(batch, ordered=False)
-            known_count += result.upserted_count
+            known_count += result.upserted_count + result.modified_count
             if i + BATCH_SIZE < len(known_operations):
                 time.sleep(BATCH_DELAY)  # Rate limiting delay
     
@@ -508,7 +513,7 @@ def save_to_mongodb(known: list, unknown: list):
         batch = unknown_operations[i:i + BATCH_SIZE]
         if batch:
             result = unknown_users_collection.bulk_write(batch, ordered=False)
-            unknown_count += result.upserted_count
+            unknown_count += result.upserted_count + result.modified_count
             if i + BATCH_SIZE < len(unknown_operations):
                 time.sleep(BATCH_DELAY)  # Rate limiting delay
     
@@ -556,24 +561,31 @@ def save_rank_history(user_ranks: dict):
     """
     updates_count = 0
     documents_to_insert = []
-    total_users = len(user_ranks)
-    processed = 0
+    
+    # Batch-fetch all latest ranks in one aggregation instead of per-user find_one
+    usernames = [u for u, d in user_ranks.items() if d.get("rank")]
+    latest_ranks = {}  # username -> latest NewRank
+    
+    if usernames:
+        pipeline = [
+            {"$match": {"RobloxUsername": {"$in": usernames}}},
+            {"$sort": {"RecordedAt": -1}},
+            {"$group": {
+                "_id": "$RobloxUsername",
+                "NewRank": {"$first": "$NewRank"}
+            }}
+        ]
+        for doc in rank_history_collection.aggregate(pipeline):
+            latest_ranks[doc["_id"]] = doc["NewRank"]
     
     for roblox_username, rank_data in user_ranks.items():
         current_rank = rank_data.get("rank")
         timestamp = rank_data.get("timestamp")
         
         if not current_rank:
-            processed += 1
             continue
         
-        # Find the most recent rank record for this user
-        latest_record = rank_history_collection.find_one(
-            {"RobloxUsername": roblox_username},
-            sort=[("RecordedAt", -1)]  # Sort by newest first
-        )
-        
-        previous_rank = latest_record.get("NewRank") if latest_record else None
+        previous_rank = latest_ranks.get(roblox_username)
         
         # Only record if rank changed (or first time)
         if previous_rank != current_rank:
@@ -583,12 +595,6 @@ def save_rank_history(user_ranks: dict):
                 "NewRank": current_rank,
                 "RecordedAt": timestamp
             })
-        
-        processed += 1
-        
-        # Add small delay every BATCH_SIZE users to reduce query load
-        if processed % BATCH_SIZE == 0 and processed < total_users:
-            time.sleep(BATCH_DELAY)
     
     # Insert all new rank records in batches
     for i in range(0, len(documents_to_insert), BATCH_SIZE):
@@ -692,7 +698,7 @@ def process_files(files: list, source_type: str = "local", bucket: str = None):
                 print(f"    Channel: {result['channel_info']['name'].encode('ascii', 'replace').decode()}")
             print(f"    Known users: {len(result['known'])}")
             print(f"    Unknown users: {len(result['unknown'])}")
-            print(f"    Messages: {len(result['messages'])}")
+            print(f"    Messages saved: {result['messages_saved']}")
             print(f"    Ranks: {len(result['ranks'])}")
             
             # SAVE IMMEDIATELY after each file
@@ -829,17 +835,6 @@ def main():
     duration = end_time - start_time
     print(f"\nTotal time: {duration}")
     print("Done!")
-
-if __name__ == "__main__":
-    start_time = datetime.now()
-    main()
-    print(f"New known inserted:   {stats['new_known']}")
-    print(f"New unknown inserted: {stats['new_unknown']}")
-    print(f"Messages saved:       {stats['total_messages']}")
-    print(f"Rank history updates: {stats['rank_updates']}")
-    if cleaned_count > 0:
-        print(f"Duplicates cleaned:   {cleaned_count}")
-    print(f"{'='*50}")
 
 
 if __name__ == "__main__":
