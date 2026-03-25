@@ -129,12 +129,17 @@ def list_b2_json_files(bucket: str, prefix: str = "") -> list:
     s3 = get_b2_client()
     files = []
     
+    print(f"  Scanning B2 bucket (this may take a while)...")
     paginator = s3.get_paginator('list_objects_v2')
+    page_count = 0
     for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        page_count += 1
         for obj in page.get('Contents', []):
             if obj['Key'].endswith('.json'):
                 files.append(obj['Key'])
+        print(f"  ... scanned {page_count} page(s), found {len(files)} JSON file(s) so far", end='\r')
     
+    print()  # newline after progress
     return files
 
 
