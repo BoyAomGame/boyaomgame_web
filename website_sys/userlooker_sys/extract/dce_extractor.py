@@ -787,6 +787,8 @@ def main():
     
     args = parser.parse_args()
     
+    start_time = datetime.now()
+    
     # Initialize MongoDB connection
     init_mongodb(port=args.port)
     
