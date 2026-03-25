@@ -2,3 +2,4 @@ node_modules/
 package-lock.json
 website_sys/parrot_system/database.sqlite
 productionenv.txt 
+/project _to_be_merged
