@@ -63,6 +63,7 @@ async def create_note(
     }
     
     await collection.insert_one(new_note)
+    new_note["_id"] = str(new_note["_id"])
     
     await log_audit(
         event_type=EVENT_MODIFY,
