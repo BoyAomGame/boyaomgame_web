@@ -57,18 +57,6 @@ MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 message_db_client = AsyncIOMotorClient(MONGO_URI)
 message_db = message_db_client["message_db"]
 
-@app.on_event("startup")
-async def startup_db_client():
-    # Ensure indexes aggressively target discord_user_id and timestamp on the message_db
-    try:
-        messages = message_db["messages"]
-        await messages.create_index([("discord_user_id", 1), ("timestamp", -1)])
-        # Use simple distinct indexes as fallbacks
-        await messages.create_index("discord_user_id")
-    except Exception as e:
-        print(f"Warning: Could not create indexes on startup: {e}")
-
-
 # ============================================================================
 # Models
 # ============================================================================
