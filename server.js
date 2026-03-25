@@ -6,7 +6,22 @@ const session = require('express-session');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// ============================================================
+// IMPORTANT: Proxy MUST be registered BEFORE body-parsing middleware!
+// express.json() consumes the raw request body stream. If it runs first,
+// http-proxy-middleware receives an empty/drained stream for POST/PUT/DELETE,
+// causing requests to hang forever and never reach the Python backend.
+// ============================================================
+const { createProxyMiddleware } = require('http-proxy-middleware');
+app.use('/api/userlooker', createProxyMiddleware({
+    target: 'http://127.0.0.1:8001',
+    changeOrigin: true,
+    pathRewrite: {
+        '^/api/userlooker': '',
+    },
+}));
+
+// Middleware (AFTER proxy registration)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
@@ -30,16 +45,6 @@ const parrotRouter = require('./website_sys/parrot_system/router');
 
 // Mount the parrot router under the /api/parrot namespace
 app.use('/api', parrotRouter);
-
-// Set up http-proxy-middleware for the standalone Python backend
-const { createProxyMiddleware } = require('http-proxy-middleware');
-app.use('/api/userlooker', createProxyMiddleware({
-    target: 'http://127.0.0.1:8001',
-    changeOrigin: true,
-    pathRewrite: {
-        '^/api/userlooker': '', // Re-route to bare Python endpoints
-    },
-}));
 
 app.listen(PORT, () => {
     console.log(`Server successfully started! \nOpen your browser and navigate to: http://localhost:${PORT}`);
