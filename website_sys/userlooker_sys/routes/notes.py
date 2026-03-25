@@ -46,34 +46,40 @@ async def create_note(
     current_admin: CurrentUser = Depends(get_current_admin)
 ):
     """Create a new note type."""
-    collection = await get_additional_data_collection()
-    
-    # Check if exists
-    existing = await collection.find_one({"note_name": note.note_name})
-    if existing:
-        raise HTTPException(status_code=400, detail="Note with this name already exists")
-    
-    new_note = {
-        "note_name": note.note_name,
-        "note_description": note.note_description,
-        "note_emoji": note.note_emoji,
-        "users": [],
-        "created_at": datetime.utcnow(),
-        "created_by": current_admin.username
-    }
-    
-    await collection.insert_one(new_note)
-    new_note["_id"] = str(new_note["_id"])
-    
-    await log_audit(
-        event_type=EVENT_MODIFY,
-        action="create_note",
-        actor=current_admin.username,
-        target=note.note_name,
-        success=True
-    )
-    
-    return {"message": "Note created successfully", "note": new_note}
+    try:
+        collection = await get_additional_data_collection()
+        
+        # Check if exists
+        existing = await collection.find_one({"note_name": note.note_name})
+        if existing:
+            raise HTTPException(status_code=400, detail="Note with this name already exists")
+        
+        new_note = {
+            "note_name": note.note_name,
+            "note_description": note.note_description,
+            "note_emoji": note.note_emoji,
+            "users": [],
+            "created_at": datetime.utcnow().isoformat(),
+            "created_by": current_admin.username
+        }
+        
+        await collection.insert_one(new_note)
+        new_note["_id"] = str(new_note["_id"])
+        
+        await log_audit(
+            event_type=EVENT_MODIFY,
+            action="create_note",
+            actor=current_admin.username,
+            target=note.note_name,
+            success=True
+        )
+        
+        return {"message": "Note created successfully", "note": new_note}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] create_note failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create note: {str(e)}")
 
 
 @router.put("/{note_name}/users")
