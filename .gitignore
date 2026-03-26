@@ -1,5 +1,21 @@
 node_modules/
+**/node_modules/
 package-lock.json
 website_sys/parrot_system/database.sqlite
 productionenv.txt 
-/project _to_be_merged
+project _to_be_merged/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Artifacts
+.gemini/
+.agent/
+.agents/

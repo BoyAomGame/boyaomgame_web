@@ -1,0 +1,117 @@
+.rank-history-page {
+    min-height: 100vh;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.rank-history-container {
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+    flex: 1;
+}
+
+.rank-history-header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.back-link {
+    color: var(--text-secondary, rgba(255, 255, 255, 0.6));
+    text-decoration: none;
+    font-size: 0.9rem;
+    display: inline-block;
+    margin-bottom: 16px;
+    transition: color 0.2s;
+}
+
+.back-link:hover {
+    color: var(--accent-color, #646cff);
+}
+
+.rank-history-header h1 {
+    font-size: 2rem;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.rank-history-header .username {
+    color: var(--text-secondary, rgba(255, 255, 255, 0.6));
+    font-size: 1.1rem;
+}
+
+.current-rank-card {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.current-rank-label {
+    color: var(--text-secondary, rgba(255, 255, 255, 0.6));
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+
+.current-rank-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-primary, white);
+    margin-bottom: 8px;
+}
+
+.total-changes {
+    color: var(--text-secondary, rgba(255, 255, 255, 0.5));
+    font-size: 0.9rem;
+}
+
+.skeleton-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.error-state {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.error-icon {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 16px;
+}
+
+.error-state h2 {
+    color: var(--text-primary, white);
+    margin-bottom: 8px;
+}
+
+.error-state p {
+    color: var(--text-secondary, rgba(255, 255, 255, 0.6));
+    margin-bottom: 24px;
+}
+
+.back-button {
+    display: inline-block;
+    padding: 12px 24px;
+    background: var(--accent-color, #646cff);
+    color: white;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.back-button:hover {
+    background: #5558dd;
+    transform: translateY(-2px);
+}

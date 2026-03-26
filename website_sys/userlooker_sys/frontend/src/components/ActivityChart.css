@@ -1,0 +1,108 @@
+.activity-chart {
+    background: var(--card-bg, rgba(30, 41, 59, 0.6));
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.chart-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.chart-title h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-primary, white);
+}
+
+.total-count {
+    color: var(--text-secondary, rgba(255, 255, 255, 0.5));
+    font-size: 0.9rem;
+}
+
+.period-selector {
+    display: flex;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 4px;
+    border-radius: 8px;
+}
+
+.period-btn {
+    padding: 6px 12px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary, rgba(255, 255, 255, 0.6));
+    font-size: 0.8rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.period-btn:hover {
+    color: var(--text-primary, white);
+}
+
+.period-btn.active {
+    background: var(--accent-color, #667eea);
+    color: white;
+}
+
+.chart-container {
+    margin: 0 -10px;
+}
+
+.chart-tooltip {
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.tooltip-date {
+    color: var(--text-secondary, rgba(255, 255, 255, 0.6));
+    font-size: 0.8rem;
+    margin: 0 0 4px 0;
+}
+
+.tooltip-value {
+    color: var(--text-primary, white);
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.no-data {
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary, rgba(255, 255, 255, 0.5));
+}
+
+.activity-chart.error {
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary, rgba(255, 255, 255, 0.5));
+}
+
+/* Light theme */
+[data-theme="light"] .chart-tooltip {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(0, 0, 0, 0.1);
+}
