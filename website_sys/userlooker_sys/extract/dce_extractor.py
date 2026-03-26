@@ -344,13 +344,7 @@ def process_json_file(filepath: Path) -> dict:
     
     guild_name = guild_info["name"]
 
-    # Aggregate data per user
-    # Key: (RobloxUsername) for known, (DiscordUserId) for tracking
-    known_users = {}  # roblox_username -> user_data
-    unknown_users = {}  # discord_id -> user_data
-    all_messages = [] # List of message objects buffer
-    user_ranks = {}  # roblox_username -> {rank, timestamp}
-    
+    all_messages = []
     messages_saved_in_file = 0
     
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -360,11 +354,9 @@ def process_json_file(filepath: Path) -> dict:
         for msg in messages:
             author = msg.get('author', {})
             if author.get('isBot', False):
-                continue  # Skip bots
+                continue
             
             discord_id = author.get('id')
-            discord_username = author.get('name')
-            nickname = author.get('nickname')
             timestamp = msg.get('timestamp')
             
             if not discord_id or not timestamp:
@@ -373,109 +365,25 @@ def process_json_file(filepath: Path) -> dict:
             # Add guild, channel, and USER info to the message
             msg["guild"] = guild_info
             msg["channel"] = channel_info
-            msg["discord_user_id"] = discord_id  # IMPORTANT: Link message to user
+            msg["discord_user_id"] = discord_id
             all_messages.append(msg)
             
-            # Immediately save and clear buffer to prevent memory bloat
+            # Save messages in batches
             if len(all_messages) >= MESSAGE_BATCH_SIZE:
                 messages_saved_in_file += save_messages_to_db(all_messages)
                 all_messages.clear()
-            
-            parsed_time = parse_timestamp(timestamp)
-            roblox_username, reason = extract_roblox_username(nickname)
-            
-            # Extract rank for rank history
-            rank = extract_rank(nickname)
-            
-            if roblox_username:
-                # Known user - group by Roblox username
-                if roblox_username not in known_users:
-                    known_users[roblox_username] = {
-                        "RobloxUsername": roblox_username,
-                        "DiscordAccounts": [],  # List of {DiscordUserId, DiscordUsername}
-                        "FirstMsgFound": parsed_time,
-                        "LastMsgFound": parsed_time,
-                        "TotalMsg": 0,
-                        "GuildCount": 0,
-                        "_guilds_seen": set(),
-                        "_discord_ids_seen": set()
-                    }
-                
-                user_data = known_users[roblox_username]
-                
-                # Add Discord account if not already tracked
-                if discord_id not in user_data["_discord_ids_seen"]:
-                    user_data["_discord_ids_seen"].add(discord_id)
-                    user_data["DiscordAccounts"].append({
-                        "DiscordUserId": discord_id,
-                        "DiscordUsername": discord_username
-                    })
-                
-                # Update timestamps
-                if parsed_time < user_data["FirstMsgFound"]:
-                    user_data["FirstMsgFound"] = parsed_time
-                if parsed_time > user_data["LastMsgFound"]:
-                    user_data["LastMsgFound"] = parsed_time
-                
-                user_data["TotalMsg"] += 1
-                user_data["_guilds_seen"].add(guild_name)
-                user_data["GuildCount"] = len(user_data["_guilds_seen"])
-                
-                # Track rank for this user (keep latest by timestamp)
-                if rank and roblox_username:
-                    if roblox_username not in user_ranks:
-                        user_ranks[roblox_username] = {"rank": rank, "timestamp": parsed_time}
-                    elif parsed_time > user_ranks[roblox_username]["timestamp"]:
-                        user_ranks[roblox_username] = {"rank": rank, "timestamp": parsed_time}
-            else:
-                # Unknown user - group by Discord ID
-                if discord_id not in unknown_users:
-                    unknown_users[discord_id] = {
-                        "DiscordUserId": discord_id,
-                        "DiscordUsername": discord_username,
-                        "Nickname": nickname,
-                        "Reason": reason,
-                        "FirstMsgFound": parsed_time,
-                        "LastMsgFound": parsed_time,
-                        "TotalMsg": 0,
-                        "GuildCount": 0,
-                        "_guilds_seen": set()
-                    }
-                
-                user_data = unknown_users[discord_id]
-                
-                # Update timestamps
-                if parsed_time < user_data["FirstMsgFound"]:
-                    user_data["FirstMsgFound"] = parsed_time
-                if parsed_time > user_data["LastMsgFound"]:
-                    user_data["LastMsgFound"] = parsed_time
-                
-                user_data["TotalMsg"] += 1
-                user_data["_guilds_seen"].add(guild_name)
-                user_data["GuildCount"] = len(user_data["_guilds_seen"])
     
-    # Clean up internal tracking sets
-    for user in known_users.values():
-        del user["_guilds_seen"]
-        del user["_discord_ids_seen"]
-    
-    for user in unknown_users.values():
-        del user["_guilds_seen"]
-    
-    # Flush remaining messages
+    # Final flush
     if all_messages:
         messages_saved_in_file += save_messages_to_db(all_messages)
-        all_messages.clear()
         
     return {
-        "known": list(known_users.values()),
-        "unknown": list(unknown_users.values()),
         "messages_saved": messages_saved_in_file,
-        "ranks": user_ranks,
         "guild_name": guild_name,
         "guild_info": guild_info,
         "channel_info": channel_info
     }
+
 
 
 def save_to_mongodb(known: list, unknown: list):
@@ -723,33 +631,15 @@ def process_files(files: list, source_type: str = "local", bucket: str = None):
                 print(f"    Channel: {result['channel_info']['name']}")
             except UnicodeEncodeError:
                 print(f"    Channel: {result['channel_info']['name'].encode('ascii', 'replace').decode()}")
-            print(f"    Known users: {len(result['known'])}")
-            print(f"    Unknown users: {len(result['unknown'])}")
-            print(f"    Messages saved: {result['messages_saved']}")
-            print(f"    Ranks: {len(result['ranks'])}")
-            
-            # SAVE IMMEDIATELY after each file
-            print(f"    Saving to MongoDB...")
-            
-            # Save users
-            new_known, new_unknown = save_to_mongodb(result["known"], result["unknown"])
-            stats["new_known"] += new_known
-            stats["new_unknown"] += new_unknown
+            # Update stats
+            stats["files_processed"] += 1
             
             # Extract messages saved stat
             msgs_saved = result["messages_saved"]
             stats["total_messages"] += msgs_saved
             
-            # Save rank history
-            rank_updates = save_rank_history(result["ranks"])
-            stats["rank_updates"] += rank_updates
-            
-            # Update stats
-            stats["files_processed"] += 1
-            stats["total_known"] += len(result["known"])
-            stats["total_unknown"] += len(result["unknown"])
-            
-            print(f"    Saved: {new_known} new known, {new_unknown} new unknown, {msgs_saved} messages")
+            print(f"    Saved: {msgs_saved} messages (User analysis disabled)")
+
             
         except Exception as e:
             print(f"    Error: {e}")
