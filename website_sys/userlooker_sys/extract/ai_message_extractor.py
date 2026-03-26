@@ -163,7 +163,7 @@ Respond ONLY with valid JSON in this format:
 }}
 """
 
-async def analyze_user(model, discord_id: str):
+async def analyze_user(model, discord_id: str, debug: bool = False):
     """Fetch data, prompt AI, and return result."""
     messages = get_user_sample_messages(discord_id)
     if not messages:
@@ -178,6 +178,11 @@ async def analyze_user(model, discord_id: str):
         response = model.generate_content(prompt)
         text = response.text.strip()
         
+        if debug:
+            print(f"\n--- DEBUG: Raw AI Response for {discord_id} ---")
+            print(text)
+            print("--- END DEBUG ---\n")
+        
         # Strip markdown
         if text.startswith("```"):
             lines = text.split("\n")
@@ -187,6 +192,7 @@ async def analyze_user(model, discord_id: str):
     except Exception as e:
         print(f"Error analyzing user {discord_id}: {e}")
         return None
+
 
 def update_database(results: list, dry_run: bool = False):
     """Update known_users and unknown_users collections."""
@@ -243,6 +249,8 @@ def main():
     parser.add_argument("--user", type=str, help="Process a specific Discord ID")
     parser.add_argument("--dry-run", action="store_true", help="Don't save to DB")
     parser.add_argument("--port", type=int, help="MongoDB port")
+    parser.add_argument("--debug", action="store_true", help="Show raw AI response")
+
     
     args = parser.parse_args()
     
@@ -262,11 +270,14 @@ def main():
         print(f"[{i+1}/{len(target_ids)}] Analyzing {user_id}...")
         
         # Run synchronously for simplicity and rate limit control
-        result = asyncio.run(analyze_user(model, user_id))
+        result = asyncio.run(analyze_user(model, user_id, debug=args.debug))
         
         if result:
             results_buffer.append(result)
-            print(f"  Result: {result.get('roblox_username')} (Conf: {result.get('confidence')}%)")
+            print(f"  Result: {result.get('roblox_username')} (Conf: {result.get('confidence')}% | Certain: {result.get('is_certain')})")
+            if args.debug:
+                print(f"  Evidence: {result.get('evidence')}")
+
         
         if len(results_buffer) >= BATCH_SIZE:
             update_database(results_buffer, args.dry_run)
