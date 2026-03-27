@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>คณะรัฐมนตรี - รัฐบาลสาธารณรัฐนกแก้ว</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <!-- ใส่ favicon -->
+  <link rel="icon" type="image/png" href="https://www.keroro.com/image/img_special/230801.jpg">
+  <style>
+    body {
+      font-family: 'Sarabun', sans-serif;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-100 text-gray-800 flex flex-col min-h-screen">
+
+  <!-- Header Top Bar -->
+  <div class="bg-blue-900 text-white text-sm py-2 px-4 flex flex-col sm:flex-row justify-between text-center sm:text-left">
+    <div class="mb-2 sm:mb-0">เว็บไซต์ทางการของรัฐบาลสาธารณรัฐนกแก้ว</div>
+    <div>
+      <a href="login.html" class="hover:underline">สำหรับแอดมิน (Admin Login)</a>
+    </div>
+  </div>
+
+  <!-- Main Navigation -->
+  <nav class="bg-white shadow">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="flex flex-col md:flex-row justify-between py-4 items-center">
+        <div class="flex items-center">
+          <img
+            src="https://cdn.discordapp.com/attachments/1160839781975085087/1485918877027401868/Untitled_design_copy.jpg?ex=69c39d4b&is=69c24bcb&hm=6571c980303d8d13f94a2d05b4cac94bda9654184d328bd00cb3f03387a80fb7&"
+            alt="ตราครุฑ" class="h-10 mr-4">
+          <span class="text-xl font-bold text-blue-900 text-center">รัฐบาลสาธารณรัฐนกแก้ว</span>
+        </div>
+        <ul class="flex flex-wrap justify-center space-x-4 md:space-x-6 mt-4 md:mt-0 text-blue-900 font-semibold text-sm md:text-base">
+          <li><a href="index.html" class="hover:underline">หน้าหลัก</a></li>
+          <li><a href="news.html" class="hover:underline">ข่าวรัฐบาล</a></li>
+          <li><a href="cabinet.html" class="underline border-b-2 border-blue-900 pb-1">คณะรัฐมนตรี</a></li>
+          <li><a href="policies.html" class="hover:underline">นโยบาย</a></li>
+          <li><a href="contact.html" class="hover:underline">ติดต่อเรา</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Cabinet Info Section -->
+  <section class="max-w-5xl mx-auto p-4 flex-grow w-full mt-8">
+    <div class="bg-white p-8 rounded shadow text-center">
+      <h1 class="text-3xl font-bold text-blue-900 mb-6 border-b pb-2">ข้อมูลคณะรัฐมนตรี</h1>
+      <p class="text-xl text-gray-600 mb-10">รายนามคณะผู้บริหารและรัฐมนตรีแห่งสาธารณรัฐนกแก้ว</p>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-left">
+        <!-- President -->
+        <div class="bg-gray-50 p-6 rounded-lg shadow-sm border-t-4 border-blue-900">
+          <div class="h-32 w-32 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center text-gray-400">
+            <svg class="h-16 w-16" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+          </div>
+          <h3 class="font-bold text-xl text-blue-900 text-center">ประธานาธิบดี</h3>
+          <p class="text-center text-gray-600 font-medium">รอการแต่งตั้ง</p>
+          <p class="mt-4 text-sm text-gray-500 text-center italic">"รับผิดชอบทิศทางนโยบายภาพรวมของรัฐบาล"</p>
+        </div>
+
+        <!-- Vice President -->
+        <div class="bg-gray-50 p-6 rounded-lg shadow-sm border-t-4 border-blue-700">
+          <div class="h-32 w-32 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center text-gray-400">
+            <svg class="h-16 w-16" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+          </div>
+          <h3 class="font-bold text-xl text-blue-800 text-center">รองประธานาธิบดี</h3>
+          <p class="text-center text-gray-600 font-medium">รอการแต่งตั้ง</p>
+          <p class="mt-4 text-sm text-gray-500 text-center italic">"ช่วยกำกับดูแลงานตามหน้าที่ได้รับมอบหมาย"</p>
+        </div>
+
+        <!-- Foreign Minister -->
+        <div class="bg-gray-50 p-6 rounded-lg shadow-sm border-t-4 border-blue-500">
+          <div class="h-32 w-32 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center text-gray-400">
+            <svg class="h-16 w-16" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+          </div>
+          <h3 class="font-bold text-xl text-blue-700 text-center">รัฐมนตรีว่าการกระทรวงการต่างประเทศ</h3>
+          <p class="text-center text-gray-600 font-medium">รอการแต่งตั้ง</p>
+          <p class="mt-4 text-sm text-gray-500 text-center italic">"รับผิดชอบความร่วมมือระหว่างประเทศ"</p>
+        </div>
+      </div>
+
+      <div class="mt-12 p-6 bg-blue-50 text-blue-800 rounded-lg text-left">
+        <h2 class="font-bold text-lg mb-2">บทบาทของคณะรัฐมนตรี</h2>
+        <p class="text-sm leading-relaxed">
+          คณะรัฐมนตรี (The Cabinet) คือคณะบุคคลผู้ได้รับมอบหมายให้ทำหน้าที่บริหารราชการแผ่นดิน และพัฒนานโยบายเพื่อให้เป็นไปตามแนวนโยบายพื้นฐานแห่งรัฐ โดยมีเป้าหมายเพื่อประโยชน์สุขสูงสุดของประชาชนในสาธารณรัฐนกแก้ว
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-blue-900 text-white py-6 mt-8">
+    <div class="max-w-7xl mx-auto text-center text-sm">
+      สงวนลิขสิทธิ์ © พ.ศ. 2569 Boyaomgame
+    </div>
+  </footer>
+
+</body>
+
+</html>
