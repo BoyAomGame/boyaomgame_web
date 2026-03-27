@@ -1,0 +1,124 @@
+.guild-activity {
+    background: var(--card-bg, rgba(30, 41, 59, 0.6));
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.guild-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.guild-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-primary, white);
+}
+
+.guild-count {
+    color: var(--text-secondary, rgba(255, 255, 255, 0.5));
+    font-size: 0.9rem;
+}
+
+.guild-content {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 24px;
+    align-items: center;
+}
+
+@media (max-width: 600px) {
+    .guild-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+.guild-chart {
+    display: flex;
+    justify-content: center;
+}
+
+.guild-loading {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.guild-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.guild-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.guild-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.guild-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+}
+
+.guild-name {
+    color: var(--text-primary, white);
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.guild-stats {
+    color: var(--text-secondary, rgba(255, 255, 255, 0.5));
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+
+.guild-more {
+    color: var(--text-secondary, rgba(255, 255, 255, 0.4));
+    font-size: 0.85rem;
+    padding-left: 24px;
+}
+
+.guild-tooltip {
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.guild-tooltip .tooltip-name {
+    color: var(--text-primary, white);
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+}
+
+.guild-tooltip .tooltip-value {
+    color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.guild-tooltip .tooltip-percent {
+    color: var(--accent-color, #667eea);
+    font-size: 0.85rem;
+    margin: 0;
+}
