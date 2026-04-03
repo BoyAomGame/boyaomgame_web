@@ -9,10 +9,10 @@ module.exports = {
       }
     },
     {
-      name: "UserLookerPythonAPI",
-      script: "python",
-      args: "-m uvicorn main:app --port 8001",
-      cwd: "./website_sys/userlooker_sys",
+      name: "UserLookerNextAPI",
+      script: "node_modules/next/dist/bin/next",
+      args: "start -p 8001",
+      cwd: "./website_sys/userlooker_sys/app",
     }
   ]
 };
