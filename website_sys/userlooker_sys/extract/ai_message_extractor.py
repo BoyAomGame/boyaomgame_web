@@ -15,7 +15,7 @@ import argparse
 import asyncio
 from datetime import datetime
 from pathlib import Path
-from pymongo import MongoClient, UpdateOne
+from pymongo import MongoClient, UpdateOne, DeleteOne
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -59,6 +59,10 @@ def init_mongodb(port: int = None):
         print("Error: 'messages' collection not found in message_db.")
         sys.exit(1)
 
+    # Ensure index on discord_user_id to prevent full collection scans (Bug #3)
+    message_db["messages"].create_index("discord_user_id")
+    print("Ensured index on message_db.messages.discord_user_id")
+
 def init_gemini():
     """Initialize Gemini AI client."""
     import google.generativeai as genai
@@ -81,15 +85,33 @@ def init_gemini():
 def get_unique_user_ids(limit: int = None):
     """Get all unique Discord user IDs from messages collection."""
     print("Fetching unique user IDs from message_db.messages...")
-    # Use distinct for efficiency, though it might hit memory limit on 10k+
-    # On 10k+ users, distinct is usually fine for a 16MB result limit.
     user_ids = message_db["messages"].distinct("discord_user_id")
-    
+
     if limit:
         random.shuffle(user_ids)
         user_ids = user_ids[:limit]
-    
+
     return user_ids
+
+
+def get_already_processed_ids():
+    """Get Discord user IDs that have already been processed (exist in known or unknown collections)."""
+    processed = set()
+
+    # Collect IDs from known_users (nested inside DiscordAccounts array)
+    for doc in known_users_collection.find({}, {"DiscordAccounts.DiscordUserId": 1}):
+        for acct in doc.get("DiscordAccounts", []):
+            uid = acct.get("DiscordUserId")
+            if uid:
+                processed.add(uid)
+
+    # Collect IDs from unknown_users (flat DiscordUserId field)
+    for doc in unknown_users_collection.find({"ProcessedByAI": True}, {"DiscordUserId": 1}):
+        uid = doc.get("DiscordUserId")
+        if uid:
+            processed.add(uid)
+
+    return processed
 
 def get_user_sample_messages(discord_id: str):
     """Fetch a random sample of messages for a user."""
@@ -133,98 +155,134 @@ def format_messages_for_ai(messages: list):
     return "\n".join(formatted)
 
 def create_prompt(discord_id: str, message_text: str):
-    """Generate the AI prompt."""
-    return f"""You are a specialized identity analysis AI. Your goal is to identify a Discord user's Roblox username based on their message history.
+    """Generate the AI prompt — supports multi-account detection."""
+    return f"""You are a specialized identity analysis AI. Your goal is to identify ALL Roblox usernames that a Discord user may own based on their message history.
 
 **Discord User ID to Analyze**: {discord_id}
 
+**IMPORTANT — Multi-Account Awareness**:
+A single Discord user may use DIFFERENT Roblox accounts in different servers. For example, they might be "Roblox101" in Server A and "Roblox301" in Server B. You MUST detect ALL distinct Roblox identities, not just one.
+
 **Instructions**:
-1. Scan the provided messages for clues about the user's Roblox account.
+1. Scan the provided messages for clues about the user's Roblox account(s).
 2. Look for explicit statements like "my user is [name]", "add me: [name]", or ";verify [name]".
 3. Distinguish between the user mentioning their own name vs. a friend's name.
 4. **Metadata Clues**:
     - **Nick (Nickname)**: Pay close attention to this. Users often format their names as "Rank | Username" in these servers.
-    - **Server ID**: Names might be different across different servers, but usually the Roblox identity remains constant.
+    - **Server ID**: Compare nicknames and statements ACROSS servers. Different Server IDs may reveal different Roblox accounts.
     - **Chan (Channel)**: Mentions in verification or support channels are high-value evidence.
-5. If you find a name, evaluate your confidence (0-100).
-6. **ACCURACY IS CRITICAL**: Only claim a username if the context strongly suggests it belongs to the Discord user being analyzed.
-
+5. For EACH detected Roblox identity, evaluate your confidence (0-100) independently.
+6. Include the server_id(s) where each account was observed.
+7. **ACCURACY IS CRITICAL**: Only claim a username if the context strongly suggests it belongs to the Discord user being analyzed.
+8. If no accounts are found, return an empty "accounts" array.
 
 **Messages**:
 {message_text}
 
-Respond ONLY with valid JSON in this format:
+Respond ONLY with valid JSON in this exact format:
 {{
     "discord_id": "{discord_id}",
-    "roblox_username": "detected_name_or_null",
-    "confidence": number,
-    "evidence": "brief explanation of why you chose this name",
-    "is_certain": true/false
+    "accounts": [
+        {{
+            "roblox_username": "detected_name",
+            "confidence": 85,
+            "evidence": "brief explanation",
+            "is_certain": true,
+            "server_ids": ["server_id_1", "server_id_2"]
+        }}
+    ]
 }}
+
+If only one account is found, the array should have one element.
+If none are found, return an empty array: "accounts": []
 """
 
 async def analyze_user(model, discord_id: str, debug: bool = False):
-    """Fetch data, prompt AI, and return result."""
+    """Fetch data, prompt AI, and return multi-account result asynchronously."""
     messages = get_user_sample_messages(discord_id)
     if not messages:
         return None
-        
+
     message_text = format_messages_for_ai(messages)
     prompt = create_prompt(discord_id, message_text)
-    
+
     try:
-        # Note: In a real async script, we'd use an async AI library if available, 
-        # but here we use the synchronous call for simplicity in this script structure.
-        response = model.generate_content(prompt)
-        text = response.text.strip()
-        
-        if debug:
-            print(f"\n--- DEBUG: Raw AI Response for {discord_id} ---")
-            print(text)
-            print("--- END DEBUG ---\n")
-        
-        # Strip markdown
-        if text.startswith("```"):
-            lines = text.split("\n")
-            text = "\n".join(lines[1:-1])
-            
-        return json.loads(text)
+        response = await model.generate_content_async(
+            prompt,
+            generation_config={"response_mime_type": "application/json"}
+        )
+
+        data = json.loads(response.text)
+
+        # Normalize: ensure we always have the multi-account format
+        if "accounts" not in data:
+            # Legacy single-account fallback
+            data = {
+                "discord_id": discord_id,
+                "accounts": [{
+                    "roblox_username": data.get("roblox_username"),
+                    "confidence": data.get("confidence", 0),
+                    "evidence": data.get("evidence", ""),
+                    "is_certain": data.get("is_certain", False),
+                    "server_ids": []
+                }] if data.get("roblox_username") else []
+            }
+
+        # Ensure discord_id is always present
+        data["discord_id"] = discord_id
+        return data
+
     except Exception as e:
         print(f"Error analyzing user {discord_id}: {e}")
         return None
 
 
 def update_database(results: list, dry_run: bool = False):
-    """Update known_users and unknown_users collections."""
+    """Update known_users and unknown_users collections (multi-account aware)."""
     if dry_run:
         print(f"Dry run: Would update {len(results)} records.")
         return
 
     known_ops = []
     unknown_ops = []
-    
+
     for res in results:
         discord_id = res["discord_id"]
-        roblox_name = res["roblox_username"]
-        confidence = res["confidence"]
-        
-        if roblox_name and confidence >= CONFIDENCE_THRESHOLD:
-            # Move to Known
-            known_ops.append(UpdateOne(
-                {"RobloxUsername": roblox_name},
-                {
-                    "$addToSet": {"DiscordAccounts": {"DiscordUserId": discord_id}},
-                    "$set": {"AI_Analyzed": datetime.utcnow(), "AI_Confidence": confidence}
-                },
-                upsert=True
-            ))
-            # Delete from unknown just in case
-            unknown_ops.append(UpdateOne(
-                {"DiscordUserId": discord_id},
-                {"$set": {"ProcessedByAI": True, "Status": "Known"}}
+        accounts = res.get("accounts", [])
+
+        # Filter accounts that meet the confidence threshold
+        valid_accounts = [
+            acc for acc in accounts
+            if acc.get("roblox_username") and acc.get("confidence", 0) >= CONFIDENCE_THRESHOLD
+        ]
+
+        if valid_accounts:
+            for acc in valid_accounts:
+                roblox_name = acc["roblox_username"]
+                confidence = acc["confidence"]
+                server_ids = acc.get("server_ids", [])
+
+                known_ops.append(UpdateOne(
+                    {"RobloxUsername": roblox_name},
+                    {
+                        "$addToSet": {"DiscordAccounts": {
+                            "DiscordUserId": discord_id,
+                            "ServerIds": server_ids
+                        }},
+                        "$set": {
+                            "AI_Analyzed": datetime.utcnow(),
+                            "AI_Confidence": confidence
+                        }
+                    },
+                    upsert=True
+                ))
+
+            # At least one valid account found — remove from unknown
+            unknown_ops.append(DeleteOne(
+                {"DiscordUserId": discord_id}
             ))
         else:
-            # Mark as Unknown
+            # No valid accounts — mark as Unknown
             unknown_ops.append(UpdateOne(
                 {"DiscordUserId": discord_id},
                 {
@@ -232,7 +290,8 @@ def update_database(results: list, dry_run: bool = False):
                         "DiscordUserId": discord_id,
                         "AI_Analyzed": datetime.utcnow(),
                         "ProcessedByAI": True,
-                        "Status": "Unknown"
+                        "Status": "Unknown",
+                        "AI_AccountsFound": len(accounts),
                     }
                 },
                 upsert=True
@@ -243,52 +302,97 @@ def update_database(results: list, dry_run: bool = False):
     if unknown_ops:
         unknown_users_collection.bulk_write(unknown_ops)
 
-def main():
+# --- Concurrency settings ---
+MAX_CONCURRENT_API_CALLS = 10  # Gemini API concurrency limit
+
+
+async def process_user(semaphore: asyncio.Semaphore, model, discord_id: str, index: int, total: int, debug: bool = False):
+    """Process a single user with semaphore-based rate limiting."""
+    async with semaphore:
+        print(f"[{index}/{total}] Analyzing {discord_id}...")
+        result = await analyze_user(model, discord_id, debug=debug)
+        if result:
+            accounts = result.get("accounts", [])
+            if accounts:
+                for acc in accounts:
+                    name = acc.get('roblox_username', '?')
+                    conf = acc.get('confidence', 0)
+                    certain = acc.get('is_certain', False)
+                    servers = ', '.join(acc.get('server_ids', [])) or 'N/A'
+                    print(f"  -> {name} (Conf: {conf}% | Certain: {certain} | Servers: {servers})")
+                    if debug:
+                        print(f"     Evidence: {acc.get('evidence', '')}")
+            else:
+                print(f"  No Roblox accounts detected.")
+        # Small delay per call to respect API rate limits
+        await asyncio.sleep(RATE_LIMIT_DELAY)
+        return result
+
+
+async def main_async():
+    """Fully asynchronous main function using asyncio.gather for concurrency."""
     parser = argparse.ArgumentParser(description="AI Message Identity Extractor")
     parser.add_argument("--limit", type=int, help="Limit number of users to process")
     parser.add_argument("--user", type=str, help="Process a specific Discord ID")
     parser.add_argument("--dry-run", action="store_true", help="Don't save to DB")
     parser.add_argument("--port", type=int, help="MongoDB port")
     parser.add_argument("--debug", action="store_true", help="Show raw AI response")
+    parser.add_argument("--concurrency", type=int, default=MAX_CONCURRENT_API_CALLS,
+                        help=f"Max concurrent API calls (default: {MAX_CONCURRENT_API_CALLS})")
+    parser.add_argument("--reprocess", action="store_true",
+                        help="Re-analyze users even if they already exist in known/unknown collections")
 
-    
     args = parser.parse_args()
-    
+
     init_mongodb(args.port)
     model = init_gemini()
-    
+
     if args.user:
         target_ids = [args.user]
     else:
         target_ids = get_unique_user_ids(args.limit)
-        
-    print(f"Total users to analyze: {len(target_ids)}")
-    
-    results_buffer = []
-    
-    for i, user_id in enumerate(target_ids):
-        print(f"[{i+1}/{len(target_ids)}] Analyzing {user_id}...")
-        
-        # Run synchronously for simplicity and rate limit control
-        result = asyncio.run(analyze_user(model, user_id, debug=args.debug))
-        
-        if result:
-            results_buffer.append(result)
-            print(f"  Result: {result.get('roblox_username')} (Conf: {result.get('confidence')}% | Certain: {result.get('is_certain')})")
-            if args.debug:
-                print(f"  Evidence: {result.get('evidence')}")
 
-        
-        if len(results_buffer) >= BATCH_SIZE:
-            update_database(results_buffer, args.dry_run)
-            results_buffer = []
-            
-        time.sleep(RATE_LIMIT_DELAY)
-        
-    if results_buffer:
-        update_database(results_buffer, args.dry_run)
-        
+    # Skip already-processed users unless --reprocess is set
+    if not args.reprocess:
+        already_processed = get_already_processed_ids()
+        before_count = len(target_ids)
+        target_ids = [uid for uid in target_ids if uid not in already_processed]
+        skipped = before_count - len(target_ids)
+        if skipped > 0:
+            print(f"Skipped {skipped} already-processed users (use --reprocess to force re-analysis)")
+    else:
+        print("--reprocess flag set: re-analyzing ALL users regardless of DB status")
+
+    total = len(target_ids)
+    print(f"Total users to analyze: {total}")
+    print(f"Concurrency limit: {args.concurrency}")
+
+    semaphore = asyncio.Semaphore(args.concurrency)
+
+    # Process in batches of BATCH_SIZE for periodic DB writes
+    for batch_start in range(0, total, BATCH_SIZE):
+        batch_ids = target_ids[batch_start:batch_start + BATCH_SIZE]
+        tasks = [
+            process_user(semaphore, model, uid, batch_start + j + 1, total, debug=args.debug)
+            for j, uid in enumerate(batch_ids)
+        ]
+
+        # Run all tasks in this batch concurrently
+        batch_results = await asyncio.gather(*tasks)
+
+        # Filter out None results and write to DB
+        valid_results = [r for r in batch_results if r is not None]
+        if valid_results:
+            update_database(valid_results, args.dry_run)
+            print(f"  Batch [{batch_start + 1}-{batch_start + len(batch_ids)}]: Wrote {len(valid_results)} results to DB.")
+
     print("Processing complete.")
+
+
+def main():
+    """Entry point — runs the async main."""
+    asyncio.run(main_async())
+
 
 if __name__ == "__main__":
     main()
