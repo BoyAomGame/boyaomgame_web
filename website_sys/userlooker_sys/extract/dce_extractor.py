@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Optional
 from pymongo import MongoClient, UpdateOne
 from dotenv import load_dotenv
+from profile_updater import build_profile_update_op, bulk_update_profiles, ensure_profile_indexes
 
 load_dotenv()
 
@@ -99,6 +100,12 @@ def init_mongodb(port: int = None):
         print("Indexes verified")
     except Exception as e:
         print(f"Warning: Could not create indexes: {e}")
+    
+    # Ensure user_profiles indexes
+    try:
+        ensure_profile_indexes(db)
+    except Exception as e:
+        print(f"Warning: Could not create profile indexes: {e}")
     
     print(f"Using database: {DB_NAME}")
 
@@ -546,6 +553,7 @@ def save_rank_history(user_ranks: dict):
 def save_messages_to_db(messages: list):
     """
     Save messages to the SINGLE 'messages' collection.
+    Also updates user_profiles atomically via $inc for real-time stats.
     
     Uses bulk operations with rate limiting.
     """
@@ -554,7 +562,7 @@ def save_messages_to_db(messages: list):
     # Get the single collection
     messages_collection = message_db["messages"]
     
-    # Build bulk operations
+    # Build bulk operations for messages
     operations = []
     for msg in messages:
         msg_id = msg.get("id")
@@ -565,7 +573,7 @@ def save_messages_to_db(messages: list):
                 upsert=True
             ))
     
-    # Execute in batches with delay
+    # Execute message writes in batches with delay
     for i in range(0, len(operations), MESSAGE_BATCH_SIZE):
         batch = operations[i:i + MESSAGE_BATCH_SIZE]
         if batch:
@@ -577,6 +585,39 @@ def save_messages_to_db(messages: list):
             
             if i + MESSAGE_BATCH_SIZE < len(operations):
                 time.sleep(MESSAGE_BATCH_DELAY)
+    
+    # ─── Real-time profile updates ────────────────────────────
+    # Build atomic $inc operations for each message in this batch
+    profile_ops = []
+    for msg in messages:
+        discord_id = msg.get("discord_user_id")
+        timestamp_str = msg.get("timestamp")
+        if not discord_id or not timestamp_str:
+            continue
+
+        try:
+            ts = parse_timestamp(timestamp_str)
+        except Exception:
+            continue
+
+        guild_id = msg.get("guild", {}).get("id")
+        author = msg.get("author", {})
+        discord_username = author.get("name")
+        avatar_url = author.get("avatarUrl")
+
+        profile_ops.append(build_profile_update_op(
+            discord_id=discord_id,
+            timestamp=ts,
+            guild_id=guild_id,
+            discord_username=discord_username,
+            avatar_url=avatar_url,
+        ))
+
+    if profile_ops:
+        try:
+            bulk_update_profiles(db, profile_ops, batch_size=MESSAGE_BATCH_SIZE)
+        except Exception as e:
+            print(f"    ! Profile update error (non-fatal): {e}")
     
     return messages_saved
 

@@ -17,6 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from pymongo import MongoClient, UpdateOne, DeleteOne
 from dotenv import load_dotenv
+from profile_updater import sync_roblox_usernames
 
 load_dotenv()
 
@@ -301,6 +302,27 @@ def update_database(results: list, dry_run: bool = False):
         known_users_collection.bulk_write(known_ops)
     if unknown_ops:
         unknown_users_collection.bulk_write(unknown_ops)
+
+    # ─── Sync Roblox usernames to user_profiles ───────────────
+    for res in results:
+        discord_id = res["discord_id"]
+        accounts = res.get("accounts", [])
+
+        valid_accounts = [
+            acc for acc in accounts
+            if acc.get("roblox_username") and acc.get("confidence", 0) >= CONFIDENCE_THRESHOLD
+        ]
+
+        if valid_accounts:
+            roblox_names = [acc["roblox_username"] for acc in valid_accounts]
+            # Pick primary = highest confidence
+            primary = max(valid_accounts, key=lambda a: a.get("confidence", 0))
+            primary_name = primary["roblox_username"]
+
+            try:
+                sync_roblox_usernames(db, discord_id, roblox_names, primary_name)
+            except Exception as e:
+                print(f"  ! Profile sync error for {discord_id}: {e}")
 
 # --- Concurrency settings ---
 MAX_CONCURRENT_API_CALLS = 10  # Gemini API concurrency limit
