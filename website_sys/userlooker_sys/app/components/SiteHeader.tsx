@@ -21,14 +21,12 @@ export function SiteHeader() {
             Search
           </Link>
         </div>
-        <button
-          type="button"
-          disabled
-          title="Discord sign-in is not configured yet"
-          className="precision-gradient text-on-primary-container font-semibold px-5 py-2 rounded-lg text-sm opacity-90 cursor-not-allowed shadow-lg shadow-primary/10"
+        <a
+          href="/userlooker/api/auth/discord"
+          className="precision-gradient text-on-primary-container font-semibold px-5 py-2 rounded-lg text-sm transition-all active:scale-95 shadow-lg shadow-primary/10 hover:opacity-90"
         >
           Connect Discord
-        </button>
+        </a>
       </nav>
     </header>
   );

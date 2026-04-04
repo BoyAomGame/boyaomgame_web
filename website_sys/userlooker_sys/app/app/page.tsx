@@ -32,11 +32,9 @@ export default function Home() {
               </span>
               Start search
             </Link>
-            <button
-              type="button"
-              disabled
-              title="Discord sign-in is not configured yet"
-              className="bg-[#5865F2] opacity-90 cursor-not-allowed text-white px-8 py-4 rounded-xl font-bold flex items-center gap-3"
+            <a
+              href="/userlooker/api/auth/discord"
+              className="bg-[#5865F2] text-white px-8 py-4 rounded-xl font-bold flex items-center gap-3 transition-all active:scale-95 hover:bg-[#4752C4]"
             >
               <span
                 className="material-symbols-outlined"
@@ -45,7 +43,7 @@ export default function Home() {
                 account_circle
               </span>
               Login with Discord
-            </button>
+            </a>
           </div>
         </section>
 
