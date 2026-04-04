@@ -64,9 +64,9 @@ if (userlookerNextUrl) {
 
 if (userlookerNextUrl) {
     app.use(
-        '/userlooker',
         createProxyMiddleware({
             target: userlookerNextUrl,
+            pathFilter: '/userlooker',
             changeOrigin: true,
             xfwd: true,
             onProxyReq(proxyReq, req) {
