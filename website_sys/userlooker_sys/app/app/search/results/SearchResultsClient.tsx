@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { USERLOOKER_BASE_PATH } from "@/lib/userlookerBasePath";
 import type { SearchMode } from "@/lib/searchValidation";
 import { validateQuery } from "@/lib/searchValidation";
 
@@ -81,8 +82,8 @@ export function SearchResultsClient() {
 
     const path =
       mode === "discord"
-        ? `/user/${encodeURIComponent(queryDecoded.trim())}`
-        : `/roblox_search/${encodeURIComponent(queryDecoded.trim())}`;
+        ? `${USERLOOKER_BASE_PATH}/user/${encodeURIComponent(queryDecoded.trim())}`
+        : `${USERLOOKER_BASE_PATH}/roblox_search/${encodeURIComponent(queryDecoded.trim())}`;
 
     try {
       const res = await fetch(path, { cache: "no-store" });

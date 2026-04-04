@@ -29,6 +29,8 @@ export function middleware(request) {
   return response;
 }
 
+// Disabled: with basePath + reverse proxy this ran on every asset and could interact badly
+// with Next 16 proxy/normalization. Re-enable with a narrow matcher if you need CORS here.
 export const config = {
-  matcher: '/:path*',
+  matcher: [],
 };
