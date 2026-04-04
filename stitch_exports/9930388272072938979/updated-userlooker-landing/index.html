@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>UserLooker | Precision Noir Analytics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#c8c5ca",
+                        "on-tertiary": "#4f2500",
+                        "secondary": "#c8c5ca",
+                        "on-surface": "#e5e1e4",
+                        "surface-tint": "#c0c1ff",
+                        "error": "#ffb4ab",
+                        "surface-bright": "#39393b",
+                        "on-tertiary-container": "#452000",
+                        "error-container": "#93000a",
+                        "on-error-container": "#ffdad6",
+                        "inverse-on-surface": "#313032",
+                        "secondary-fixed": "#e4e1e6",
+                        "on-secondary-fixed": "#1b1b1e",
+                        "on-primary-fixed": "#07006c",
+                        "surface-variant": "#353437",
+                        "primary": "#c0c1ff",
+                        "outline-variant": "#464554",
+                        "on-secondary-container": "#b6b4b8",
+                        "surface-container-high": "#2a2a2c",
+                        "surface-container": "#201f22",
+                        "on-tertiary-fixed-variant": "#703700",
+                        "on-secondary": "#303033",
+                        "tertiary": "#ffb783",
+                        "secondary-container": "#47464a",
+                        "primary-container": "#8083ff",
+                        "outline": "#908fa0",
+                        "surface-container-highest": "#353437",
+                        "on-tertiary-fixed": "#301400",
+                        "surface-dim": "#131315",
+                        "on-secondary-fixed-variant": "#47464a",
+                        "inverse-primary": "#494bd6",
+                        "surface": "#131315",
+                        "on-primary-fixed-variant": "#2f2ebe",
+                        "tertiary-fixed": "#ffdcc5",
+                        "primary-fixed": "#e1e0ff",
+                        "surface-container-low": "#1c1b1d",
+                        "primary-fixed-dim": "#c0c1ff",
+                        "tertiary-container": "#d97721",
+                        "on-background": "#e5e1e4",
+                        "on-surface-variant": "#c7c4d7",
+                        "on-primary-container": "#0d0096",
+                        "inverse-surface": "#e5e1e4",
+                        "tertiary-fixed-dim": "#ffb783",
+                        "surface-container-lowest": "#0e0e10",
+                        "background": "#131315",
+                        "on-error": "#690005",
+                        "on-primary": "#1000a9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #09090b;
+            color: #e5e1e4;
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .precision-gradient {
+            background: linear-gradient(135deg, #8083ff 0%, #c0c1ff 100%);
+        }
+        .noir-card {
+            background-color: #18181b;
+            transition: all 0.15s ease-out;
+        }
+        .noir-card:hover {
+            background-color: #1c1b1d;
+        }
+        .glass-header {
+            background-color: rgba(9, 9, 11, 0.8);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopNavBar -->
+<header class="fixed top-0 left-0 right-0 z-50 glass-header border-b border-[#1c1b1d]">
+<nav class="flex justify-between items-center w-full px-6 py-4 max-w-7xl mx-auto font-['Inter'] tracking-tight">
+<div class="text-xl font-black text-[#e5e1e4] tracking-tighter">
+                UserLooker
+            </div>
+<div class="hidden md:flex items-center space-x-8">
+<a class="text-[#a1a1aa] hover:text-[#e5e1e4] transition-colors hover:bg-[#1c1b1d]/50 px-2 py-1 rounded-sm" href="#">Dashboard</a>
+<a class="text-[#a1a1aa] hover:text-[#e5e1e4] transition-colors hover:bg-[#1c1b1d]/50 px-2 py-1 rounded-sm" href="#">Guilds</a>
+<a class="text-[#a1a1aa] hover:text-[#e5e1e4] transition-colors hover:bg-[#1c1b1d]/50 px-2 py-1 rounded-sm" href="#">Support</a>
+</div>
+<button class="precision-gradient text-[#0d0096] font-semibold px-5 py-2 rounded-lg text-sm active:scale-95 transition-all duration-100 ease-out shadow-lg shadow-primary/10">
+                Connect Discord
+            </button>
+</nav>
+</header>
+<main class="pt-32 pb-20">
+<!-- Hero Section -->
+<section class="max-w-4xl mx-auto text-center px-6 mb-24">
+<div class="inline-flex items-center space-x-2 bg-surface-container-low px-3 py-1 rounded-full mb-8 border border-outline-variant/10">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-[10px] uppercase tracking-widest font-mono text-on-surface-variant">Live Data Stream Active</span>
+</div>
+<h1 class="text-6xl md:text-8xl font-black tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-on-surface to-on-surface-variant/50">
+                UserLooker
+            </h1>
+<p class="text-on-surface-variant text-lg md:text-xl max-w-2xl mx-auto mb-12 font-medium leading-relaxed">
+                High-fidelity analytics for Discord and Roblox ecosystems. Precision surveillance tools for guild administrators and data architects.
+            </p>
+<div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+<button class="bg-[#5865F2] hover:bg-[#4752C4] text-white px-8 py-4 rounded-xl font-bold flex items-center space-x-3 transition-all active:scale-95">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_circle</span>
+<span>Login with Discord</span>
+</button>
+</div>
+</section>
+<!-- Bento Stats Grid -->
+<section class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Messages Card -->
+<div class="noir-card p-8 rounded-2xl flex flex-col justify-between group">
+<div>
+<div class="flex items-center justify-between mb-8">
+<span class="text-[10px] font-mono uppercase tracking-[0.2em] text-primary">Data.Protocol_01</span>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">database</span>
+</div>
+<h3 class="text-on-surface-variant text-sm font-medium mb-2">Messages Count</h3>
+<div class="font-mono text-4xl lg:text-5xl font-bold tracking-tight text-on-surface">
+                        2,842,910
+                    </div>
+</div>
+<div class="mt-8 flex items-center space-x-2">
+<div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-[78%] h-full bg-primary"></div>
+</div>
+<span class="text-[10px] font-mono text-on-surface-variant">78%</span>
+</div>
+</div>
+<!-- Users Card -->
+<div class="noir-card p-8 rounded-2xl flex flex-col justify-between group">
+<div>
+<div class="flex items-center justify-between mb-8">
+<span class="text-[10px] font-mono uppercase tracking-[0.2em] text-primary">Data.Protocol_02</span>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">group</span>
+</div>
+<h3 class="text-on-surface-variant text-sm font-medium mb-2">Total Tracked Users</h3>
+<div class="font-mono text-4xl lg:text-5xl font-bold tracking-tight text-on-surface">
+                        842,102
+                    </div>
+</div>
+<div class="mt-8 flex items-center space-x-2">
+<div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-[45%] h-full bg-primary"></div>
+</div>
+<span class="text-[10px] font-mono text-on-surface-variant">45%</span>
+</div>
+</div>
+<!-- Guilds Card -->
+<div class="noir-card p-8 rounded-2xl flex flex-col justify-between group">
+<div>
+<div class="flex items-center justify-between mb-8">
+<span class="text-[10px] font-mono uppercase tracking-[0.2em] text-primary">Data.Protocol_03</span>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">hub</span>
+</div>
+<h3 class="text-on-surface-variant text-sm font-medium mb-2">Total Tracked Guilds</h3>
+<div class="font-mono text-4xl lg:text-5xl font-bold tracking-tight text-on-surface">
+                        14,029
+                    </div>
+</div>
+<div class="mt-8 flex items-center space-x-2">
+<div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-[92%] h-full bg-primary"></div>
+</div>
+<span class="text-[10px] font-mono text-on-surface-variant">92%</span>
+</div>
+</div>
+</section>
+<!-- Visual Element -->
+</main>
+<!-- Footer -->
+<footer class="bg-[#09090b] full-width py-12 border-t border-[#1c1b1d]">
+<div class="flex flex-col md:flex-row justify-between items-center px-8 w-full max-w-7xl mx-auto font-['JetBrains_Mono'] text-[10px] uppercase tracking-widest">
+<div class="text-[#e5e1e4] font-bold mb-6 md:mb-0">
+                UserLooker
+            </div>
+<div class="flex space-x-8 mb-6 md:mb-0">
+<a class="text-[#71717a] hover:text-[#e5e1e4] transition-opacity opacity-80 hover:opacity-100" href="#">Privacy Policy</a>
+<a class="text-[#71717a] hover:text-[#e5e1e4] transition-opacity opacity-80 hover:opacity-100" href="#">Terms of Service</a>
+<a class="text-[#71717a] hover:text-[#e5e1e4] transition-opacity opacity-80 hover:opacity-100" href="#">API Status</a>
+</div>
+<div class="text-[#71717a]">
+                © 2024 UserLooker. Precision Noir Analytics.
+            </div>
+</div>
+</footer>
+</body></html>

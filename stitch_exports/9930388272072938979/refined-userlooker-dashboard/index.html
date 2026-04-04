@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .mono { font-family: 'JetBrains+Mono', monospace; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #09090b; }
+        ::-webkit-scrollbar-thumb { background: #353437; border-radius: 10px; }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary-container": "#8083ff",
+                      "tertiary-container": "#d97721",
+                      "error-container": "#93000a",
+                      "surface-tint": "#c0c1ff",
+                      "surface-variant": "#353437",
+                      "surface-container-lowest": "#09090b",
+                      "on-primary-fixed": "#07006c",
+                      "on-primary": "#1000a9",
+                      "on-surface-variant": "#c7c4d7",
+                      "inverse-surface": "#e5e1e4",
+                      "on-primary-container": "#0d0096",
+                      "on-secondary-container": "#b6b4b8",
+                      "secondary-container": "#47464a",
+                      "on-error": "#690005",
+                      "inverse-primary": "#494bd6",
+                      "tertiary": "#ffb783",
+                      "outline": "#908fa0",
+                      "surface-container-highest": "#353437",
+                      "error": "#ffb4ab",
+                      "on-error-container": "#ffdad6",
+                      "surface-bright": "#39393b",
+                      "tertiary-fixed-dim": "#ffb783",
+                      "surface-container-low": "#18181b",
+                      "on-tertiary-container": "#452000",
+                      "surface": "#09090b",
+                      "surface-container": "#201f22",
+                      "on-secondary-fixed-variant": "#47464a",
+                      "primary": "#c0c1ff",
+                      "secondary-fixed-dim": "#c8c5ca",
+                      "inverse-on-surface": "#313032",
+                      "on-tertiary-fixed": "#301400",
+                      "surface-dim": "#09090b",
+                      "on-primary-fixed-variant": "#2f2ebe",
+                      "primary-fixed-dim": "#c0c1ff",
+                      "tertiary-fixed": "#ffdcc5",
+                      "on-secondary-fixed": "#1b1b1e",
+                      "on-secondary": "#303033",
+                      "outline-variant": "#464554",
+                      "on-surface": "#e5e1e4",
+                      "background": "#09090b",
+                      "secondary": "#c8c5ca",
+                      "on-tertiary-fixed-variant": "#703700",
+                      "surface-container-high": "#2a2a2c",
+                      "secondary-fixed": "#e4e1e6",
+                      "primary-fixed": "#e1e0ff",
+                      "on-tertiary": "#4f2500",
+                      "on-background": "#e5e1e4"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              }
+            }
+          }
+        }
+      </script>
+</head>
+<body class="bg-surface text-on-surface selection:bg-primary-container selection:text-on-primary-container flex flex-col min-h-screen">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full border-b border-outline-variant/10 bg-[#09090b]/70 backdrop-blur-xl flex justify-between items-center h-16 px-6 z-50 font-['Inter'] tracking-tight">
+<div class="flex items-center gap-8">
+<span class="text-xl font-black text-[#e5e1e4] tracking-tighter uppercase">UserLooker</span>
+<!-- Command Search Bar -->
+<div class="hidden md:flex items-center bg-surface-container-low rounded-lg px-3 py-1.5 border border-outline-variant/10 focus-within:border-primary/40 transition-all">
+<div class="flex items-center gap-2 pr-3 border-r border-outline-variant/20 mr-3">
+<span class="material-symbols-outlined text-primary text-sm">filter_list</span>
+<select class="bg-transparent text-xs text-on-surface-variant font-medium focus:ring-0 border-none p-0 cursor-pointer">
+<option>Discord User</option>
+<option>Roblox Username</option>
+</select>
+</div>
+<span class="material-symbols-outlined text-outline text-[20px] mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-64 text-on-surface" placeholder="Search parameters..." type="text"/>
+<div class="ml-4 flex items-center gap-1 bg-surface-variant/50 px-1.5 py-0.5 rounded border border-outline-variant/20">
+<span class="text-[10px] text-outline font-bold">⌘</span>
+<span class="text-[10px] text-outline font-bold">K</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">settings</button>
+<div class="h-8 w-8 rounded-full overflow-hidden border border-outline-variant/30">
+<img class="w-full h-full object-cover" data-alt="Modern geometric avatar profile picture with neon indigo accents on a dark abstract background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBa47HLMqPrV6VZu81zW0LGZ5tfDw0F5XUahmTMi6AVV2FetqE36XcVrqlTnecHSPo6yeNUj0pEHPy0XQDLv18g0pAMimgru6uDt0xUt6QfphghGe_EOzYfILScjburfjU1GB2Wc4A0bw8mpXMQXhaocg4LA2MeMj-MJzpHErdzrcc8stVge0g7qZEeLvbS2s2D3ZS6Vjeqp4kHvzGMTFz0uJz7ObBRZSdxVmD-5doMpdzTF2yjVlItO5RdUFCTAgt8DwaF0emdFfU"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow pt-24 p-8 max-w-7xl mx-auto w-full">
+<!-- Bento Grid -->
+<div class="grid grid-cols-12 gap-6 auto-rows-[160px]">
+<!-- Metric 1: Messages Count -->
+<div class="col-span-12 md:col-span-4 bg-surface-container-low p-6 flex flex-col justify-between group hover:bg-surface-container-high transition-colors duration-200">
+<div class="flex justify-between items-start">
+<span class="text-[11px] font-bold uppercase tracking-wider text-outline">Messages Count</span>
+<span class="material-symbols-outlined text-primary/40 group-hover:text-primary transition-colors">chat_bubble</span>
+</div>
+<div>
+<h3 class="mono text-3xl font-medium tracking-tighter">1,248,592</h3>
+<div class="flex items-center gap-1 text-[11px] text-primary mt-1">
+<span class="material-symbols-outlined text-xs">trending_up</span>
+<span class="mono">+12.4% vs last week</span>
+</div>
+</div>
+</div>
+<!-- Metric 2: Total Tracked Users -->
+<div class="col-span-12 md:col-span-4 bg-surface-container-low p-6 flex flex-col justify-between group hover:bg-surface-container-high transition-colors duration-200">
+<div class="flex justify-between items-start">
+<span class="text-[11px] font-bold uppercase tracking-wider text-outline">Total Tracked Users</span>
+<span class="material-symbols-outlined text-primary/40 group-hover:text-primary transition-colors">person_search</span>
+</div>
+<div>
+<h3 class="mono text-3xl font-medium tracking-tighter">84,201</h3>
+<p class="text-[11px] text-on-surface-variant/60 mt-1 uppercase tracking-tight">Active synchronization</p>
+</div>
+</div>
+<!-- Metric 3: Total Tracked Guilds -->
+<div class="col-span-12 md:col-span-4 bg-surface-container-low p-6 flex flex-col justify-between group hover:bg-surface-container-high transition-colors duration-200">
+<div class="flex justify-between items-start">
+<span class="text-[11px] font-bold uppercase tracking-wider text-outline">Total Tracked Guilds</span>
+<span class="material-symbols-outlined text-primary/40 group-hover:text-primary transition-colors">hub</span>
+</div>
+<div>
+<h3 class="mono text-3xl font-medium tracking-tighter">412</h3>
+<div class="flex items-center gap-1 text-[11px] text-error mt-1">
+<span class="material-symbols-outlined text-xs">warning</span>
+<span class="mono">3 guild connections unstable</span>
+</div>
+</div>
+</div>
+<!-- Announcements Section (Expanded Bento) -->
+<div class="col-span-12 row-span-2 bg-surface-container-low p-8 flex flex-col">
+<div class="flex justify-between items-center mb-8">
+<h2 class="text-sm font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-3">
+<span class="h-1.5 w-1.5 bg-primary rounded-full"></span>
+                    Announcements
+                </h2>
+<button class="text-xs text-outline hover:text-on-surface transition-colors">View Archive</button>
+</div>
+<div class="space-y-6 overflow-y-auto pr-2 custom-scrollbar">
+<!-- Announcement 1 -->
+<div class="group cursor-pointer">
+<div class="flex justify-between items-start mb-1">
+<h3 class="text-lg font-semibold group-hover:text-primary transition-colors">v1.2 Protocol Deployment: Enhanced Roblox Scrapers</h3>
+<span class="mono text-[10px] text-outline mt-1">Oct 24, 2023</span>
+</div>
+<p class="text-sm text-on-surface-variant/70 leading-relaxed max-w-4xl">
+                        We've optimized the scraping engine to reduce latency by 40% when fetching high-volume player data. This update addresses the recent Roblox API rate-limiting issues...
+                    </p>
+</div>
+<!-- Announcement 2 -->
+<div class="group cursor-pointer">
+<div class="flex justify-between items-start mb-1">
+<h3 class="text-lg font-semibold group-hover:text-primary transition-colors">New Global Blacklist Integration</h3>
+<span class="mono text-[10px] text-outline mt-1">Oct 20, 2023</span>
+</div>
+<p class="text-sm text-on-surface-variant/70 leading-relaxed max-w-4xl">
+                        Users can now cross-reference Discord IDs with the centralized Looker Blacklist, flagging potential bad actors across 400+ tracked servers automatically.
+                    </p>
+</div>
+<!-- Announcement 3 -->
+<div class="group cursor-pointer">
+<div class="flex justify-between items-start mb-1">
+<h3 class="text-lg font-semibold group-hover:text-primary transition-colors">Infrastructure Maintenance Window</h3>
+<span class="mono text-[10px] text-outline mt-1">Oct 18, 2023</span>
+</div>
+<p class="text-sm text-on-surface-variant/70 leading-relaxed max-w-4xl">
+                        Brief downtime scheduled for Sunday at 04:00 UTC for database sharding. Data ingestion will be queued and processed immediately following maintenance.
+                    </p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full border-t border-outline-variant/10 bg-surface py-8 px-6 mt-12">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="flex flex-col gap-1">
+<span class="text-lg font-black text-on-surface tracking-tighter uppercase">UserLooker</span>
+<p class="text-[11px] text-outline tracking-tight uppercase">© 2024 UserLooker Onyx. All protocols reserved.</p>
+</div>
+<div class="flex items-center gap-8">
+<a class="text-xs text-on-surface-variant hover:text-primary transition-colors uppercase tracking-widest" href="#">Privacy Policy</a>
+<a class="text-xs text-on-surface-variant hover:text-primary transition-colors uppercase tracking-widest" href="#">Terms of Service</a>
+<div class="flex items-center gap-2 px-3 py-1 bg-surface-container-low rounded-full border border-outline-variant/20">
+<span class="h-1.5 w-1.5 bg-[#4ade80] rounded-full animate-pulse"></span>
+<span class="text-[10px] mono text-on-surface-variant uppercase">API Status: Operational</span>
+</div>
+</div>
+</div>
+</footer>
+<style>
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(128, 131, 255, 0.1);
+        border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: rgba(128, 131, 255, 0.3);
+    }
+</style>
+</body></html>

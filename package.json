@@ -5,9 +5,9 @@
   "scripts": {
     "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "userlooker:build": "npm run build --prefix website_sys/userlooker_sys/frontend",
-    "userlooker:dev": "npm run dev --prefix website_sys/userlooker_sys/frontend",
-    "userlooker:install": "npm install --prefix website_sys/userlooker_sys/frontend"
+    "userlooker:build": "npm run build --prefix website_sys/userlooker_sys/app",
+    "userlooker:dev": "npm run dev --prefix website_sys/userlooker_sys/app",
+    "userlooker:install": "npm install --prefix website_sys/userlooker_sys/app"
   },
 
   "repository": {
