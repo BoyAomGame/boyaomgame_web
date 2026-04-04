@@ -32,20 +32,18 @@ export default function Home() {
               </span>
               Start search
             </Link>
-            <button
-              type="button"
-              disabled
-              title="Discord sign-in is not configured yet"
-              className="bg-[#5865F2] opacity-90 cursor-not-allowed text-white px-8 py-4 rounded-xl font-bold flex items-center gap-3"
+            <Link
+              href="/dashboard"
+              className="bg-surface-container-low hover:bg-surface-container-high text-on-surface px-8 py-4 rounded-xl font-bold flex items-center gap-3 transition-all active:scale-95 border border-outline-variant/10"
             >
               <span
                 className="material-symbols-outlined"
                 style={{ fontVariationSettings: "'FILL' 1" }}
               >
-                account_circle
+                dashboard
               </span>
-              Login with Discord
-            </button>
+              Dashboard
+            </Link>
           </div>
         </section>
 

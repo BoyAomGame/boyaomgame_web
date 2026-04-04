@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
+import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
   useCallback,
@@ -16,6 +18,7 @@ import {
 } from "@/lib/searchValidation";
 
 export function DashboardHeader() {
+  const { data: session } = useSession();
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<SearchMode>("roblox");
@@ -133,16 +136,45 @@ export function DashboardHeader() {
         >
           Full search
         </Link>
-        <span
-          className="material-symbols-outlined text-on-surface-variant"
-          aria-hidden
-        >
-          settings
-        </span>
-        <div
-          className="h-8 w-8 rounded-full bg-surface-container-high border border-outline-variant/30"
-          aria-hidden
-        />
+        {session?.user ? (
+          <div className="flex items-center gap-3">
+            {session.user.isAdmin && (
+              <span className="text-[9px] font-bold uppercase tracking-widest bg-primary/20 text-primary px-2 py-0.5 rounded-full border border-primary/30">
+                Admin
+              </span>
+            )}
+            {session.user.avatar_url ? (
+              <Image
+                src={session.user.avatar_url}
+                alt={session.user.username ?? "User"}
+                width={28}
+                height={28}
+                className="rounded-full border border-outline-variant/30"
+              />
+            ) : (
+              <div className="h-7 w-7 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center">
+                <span className="material-symbols-outlined text-sm text-outline">
+                  person
+                </span>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => signOut()}
+              className="text-on-surface-variant hover:text-error transition-colors"
+              title="Sign out"
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                logout
+              </span>
+            </button>
+          </div>
+        ) : (
+          <div
+            className="h-8 w-8 rounded-full bg-surface-container-high border border-outline-variant/30"
+            aria-hidden
+          />
+        )}
       </div>
       {error ? (
         <p
