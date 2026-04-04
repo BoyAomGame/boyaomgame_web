@@ -129,8 +129,9 @@ export async function GET(request, { params }) {
     const updatedAtTime = primaryProfile.updated_at ? new Date(primaryProfile.updated_at).getTime() : 0;
     const nowTime = new Date().getTime();
     
-    // Only fetch if stale, but allow missing bot token to degrade gracefully
-    if (nowTime - updatedAtTime > ONE_DAY_MS) {
+    // Fetch if stale OR if stored avatar is not from Discord CDN (e.g. B2 URL)
+    const hasDiscordAvatar = primaryProfile.avatar_url && primaryProfile.avatar_url.includes('cdn.discordapp.com');
+    if (nowTime - updatedAtTime > ONE_DAY_MS || !hasDiscordAvatar) {
         discordData = await fetchDiscordUser(primaryProfile._id);
         
         if (discordData === 'RATE_LIMIT') {
