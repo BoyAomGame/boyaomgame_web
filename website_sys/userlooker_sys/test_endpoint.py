@@ -1,5 +1,4 @@
 import requests
-import sys
 
 def test_user_lookup():
     user_id = "1383083682511716482"
