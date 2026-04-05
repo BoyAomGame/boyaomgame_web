@@ -6,6 +6,8 @@ module.exports = {
       cwd: ".",
       env: {
         NODE_ENV: "production",
+        // Same host/port as UserLookerNextAPI (next start -p 8001)
+        USERLOOKER_NEXT_URL: "http://127.0.0.1:8001",
       }
     },
     {

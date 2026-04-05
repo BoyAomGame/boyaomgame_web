@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+pymongo
+pytest
+pytest-cov
+httpx
