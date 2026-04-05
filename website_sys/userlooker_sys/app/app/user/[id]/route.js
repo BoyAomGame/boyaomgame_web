@@ -19,8 +19,12 @@ export async function GET(request, { params }) {
     const dbName = process.env.DB_NAME || 'discord_data';
     const db = client.db(dbName);
 
+    console.log(`[user route] DB_NAME=${dbName}, searching user_profiles for _id=${id} (type: ${typeof id})`);
+
     // Step 1: Internal lookup
     const userProfile = await db.collection('user_profiles').findOne({ _id: id });
+
+    console.log(`[user route] findOne result: ${userProfile ? 'FOUND' : 'NOT FOUND'}`);
 
     if (!userProfile) {
       return NextResponse.json(
@@ -38,8 +42,9 @@ export async function GET(request, { params }) {
     const updatedAtTime = userProfile.updated_at ? new Date(userProfile.updated_at).getTime() : 0;
     const nowTime = new Date().getTime();
     
-    // Only fetch if stale, but allow missing bot token to degrade gracefully
-    if (nowTime - updatedAtTime > ONE_DAY_MS) {
+    // Fetch if stale OR if stored avatar is not from Discord CDN (e.g. B2 URL)
+    const hasDiscordAvatar = userProfile.avatar_url && userProfile.avatar_url.includes('cdn.discordapp.com');
+    if (nowTime - updatedAtTime > ONE_DAY_MS || !hasDiscordAvatar) {
         discordData = await fetchDiscordUser(id);
         
         if (discordData === 'RATE_LIMIT') {
