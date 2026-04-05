@@ -9,13 +9,13 @@ Usage:
 import os
 import sys
 import json
-import time
+import asyncio
 import random
 import argparse
-import asyncio
 from datetime import datetime
 from pathlib import Path
-from pymongo import MongoClient, UpdateOne
+from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import UpdateOne
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -40,7 +40,7 @@ message_db = None
 known_users_collection = None
 unknown_users_collection = None
 
-def init_mongodb(port: int = None):
+async def init_mongodb(port: int = None):
     """Initialize MongoDB connection."""
     global client, db, message_db, known_users_collection, unknown_users_collection
     
@@ -48,14 +48,14 @@ def init_mongodb(port: int = None):
     mongo_uri = f"mongodb://{MONGO_HOST}:{mongo_port}"
     
     print(f"Connecting to MongoDB at {mongo_uri}...")
-    client = MongoClient(mongo_uri)
+    client = AsyncIOMotorClient(mongo_uri)
     db = client[DB_NAME]
     message_db = client[MESSAGE_DB_NAME]
     known_users_collection = db["known_users"]
     unknown_users_collection = db["unknown_users"]
     
     # Check if necessary collections exist
-    if "messages" not in message_db.list_collection_names():
+    if "messages" not in await message_db.list_collection_names():
         print("Error: 'messages' collection not found in message_db.")
         sys.exit(1)
 
@@ -78,12 +78,12 @@ def init_gemini():
         print(f"Warning: {model_name} failed to initialize ({e}). Falling back to gemini-2.0-flash-lite.")
         return genai.GenerativeModel("gemini-2.0-flash-lite")
 
-def get_unique_user_ids(limit: int = None):
+async def get_unique_user_ids(limit: int = None):
     """Get all unique Discord user IDs from messages collection."""
     print("Fetching unique user IDs from message_db.messages...")
     # Use distinct for efficiency, though it might hit memory limit on 10k+
     # On 10k+ users, distinct is usually fine for a 16MB result limit.
-    user_ids = message_db["messages"].distinct("discord_user_id")
+    user_ids = await message_db["messages"].distinct("discord_user_id")
     
     if limit:
         random.shuffle(user_ids)
@@ -91,17 +91,17 @@ def get_unique_user_ids(limit: int = None):
     
     return user_ids
 
-def get_user_sample_messages(discord_id: str):
+async def get_user_sample_messages(discord_id: str):
     """Fetch a random sample of messages for a user."""
     # Count total messages first
-    total_msgs = message_db["messages"].count_documents({"discord_user_id": discord_id})
+    total_msgs = await message_db["messages"].count_documents({"discord_user_id": discord_id})
     
     if total_msgs == 0:
         return []
 
     # If count <= RANDOM_SAMPLE_SIZE, get all
     if total_msgs <= RANDOM_SAMPLE_SIZE:
-        messages = list(message_db["messages"].find({"discord_user_id": discord_id}))
+        messages = await message_db["messages"].find({"discord_user_id": discord_id}).to_list(length=None)
     else:
         # Random sampling using $sample aggregation or simply skipping random offsets
         # $sample is better for randomness
@@ -109,7 +109,7 @@ def get_user_sample_messages(discord_id: str):
             {"$match": {"discord_user_id": discord_id}},
             {"$sample": {"size": RANDOM_SAMPLE_SIZE}}
         ]
-        messages = list(message_db["messages"].aggregate(pipeline))
+        messages = await message_db["messages"].aggregate(pipeline).to_list(length=RANDOM_SAMPLE_SIZE)
     
     return messages
 
@@ -165,7 +165,7 @@ Respond ONLY with valid JSON in this format:
 
 async def analyze_user(model, discord_id: str, debug: bool = False):
     """Fetch data, prompt AI, and return result."""
-    messages = get_user_sample_messages(discord_id)
+    messages = await get_user_sample_messages(discord_id)
     if not messages:
         return None
         
@@ -173,9 +173,8 @@ async def analyze_user(model, discord_id: str, debug: bool = False):
     prompt = create_prompt(discord_id, message_text)
     
     try:
-        # Note: In a real async script, we'd use an async AI library if available, 
-        # but here we use the synchronous call for simplicity in this script structure.
-        response = model.generate_content(prompt)
+        # Use the asynchronous Gemini API call
+        response = await model.generate_content_async(prompt)
         text = response.text.strip()
         
         if debug:
@@ -194,7 +193,7 @@ async def analyze_user(model, discord_id: str, debug: bool = False):
         return None
 
 
-def update_database(results: list, dry_run: bool = False):
+async def update_database(results: list, dry_run: bool = False):
     """Update known_users and unknown_users collections."""
     if dry_run:
         print(f"Dry run: Would update {len(results)} records.")
@@ -239,11 +238,11 @@ def update_database(results: list, dry_run: bool = False):
             ))
 
     if known_ops:
-        known_users_collection.bulk_write(known_ops)
+        await known_users_collection.bulk_write(known_ops)
     if unknown_ops:
-        unknown_users_collection.bulk_write(unknown_ops)
+        await unknown_users_collection.bulk_write(unknown_ops)
 
-def main():
+async def main():
     parser = argparse.ArgumentParser(description="AI Message Identity Extractor")
     parser.add_argument("--limit", type=int, help="Limit number of users to process")
     parser.add_argument("--user", type=str, help="Process a specific Discord ID")
@@ -254,13 +253,13 @@ def main():
     
     args = parser.parse_args()
     
-    init_mongodb(args.port)
+    await init_mongodb(args.port)
     model = init_gemini()
     
     if args.user:
         target_ids = [args.user]
     else:
-        target_ids = get_unique_user_ids(args.limit)
+        target_ids = await get_unique_user_ids(args.limit)
         
     print(f"Total users to analyze: {len(target_ids)}")
     
@@ -269,8 +268,8 @@ def main():
     for i, user_id in enumerate(target_ids):
         print(f"[{i+1}/{len(target_ids)}] Analyzing {user_id}...")
         
-        # Run synchronously for simplicity and rate limit control
-        result = asyncio.run(analyze_user(model, user_id, debug=args.debug))
+        # Run inside the existing event loop
+        result = await analyze_user(model, user_id, debug=args.debug)
         
         if result:
             results_buffer.append(result)
@@ -280,15 +279,15 @@ def main():
 
         
         if len(results_buffer) >= BATCH_SIZE:
-            update_database(results_buffer, args.dry_run)
+            await update_database(results_buffer, args.dry_run)
             results_buffer = []
             
-        time.sleep(RATE_LIMIT_DELAY)
+        await asyncio.sleep(RATE_LIMIT_DELAY)
         
     if results_buffer:
-        update_database(results_buffer, args.dry_run)
+        await update_database(results_buffer, args.dry_run)
         
     print("Processing complete.")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
