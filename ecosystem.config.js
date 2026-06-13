@@ -11,7 +11,7 @@ module.exports = {
     {
       name: "FriendTrack",
       script: "main.py",
-      interpreter: "./friendtrack/.venv/bin/python",
+      interpreter: ".venv/bin/python",
       cwd: "./friendtrack",
       env: {
         FRIENDTRACK_DATA_DIR: "./data",
