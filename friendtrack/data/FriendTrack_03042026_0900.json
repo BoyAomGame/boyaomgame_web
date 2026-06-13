@@ -1,0 +1,5 @@
+﻿{ "timestamp_local": "2026-04-03 09:00:00", "timestamp_iso": "2026-04-03T09:00:00.000000",
+  "friend_activity": [
+    { "userPresence": { "UserPresenceType": "InGame", "lastLocation": "Blox Fruits", "placeId": 2753915549, "rootPlaceId": 2753915549, "gameInstanceId": "dddddddd", "universeId": 994732206, "lastOnline": "2026-04-03T08:59:00.00Z" }, "sortScore": 1.0, "id": 2584071277 },
+    { "userPresence": { "UserPresenceType": "InGame", "lastLocation": "Blox Fruits", "placeId": 2753916000, "rootPlaceId": 2753915549, "gameInstanceId": "eeeeeeee", "universeId": 994732206, "lastOnline": "2026-04-03T08:58:00.00Z" }, "sortScore": 1.0, "id": 55554444 }
+  ] }

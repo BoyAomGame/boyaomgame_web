@@ -1,0 +1,32 @@
+{
+  "timestamp_local": "2026-04-03 08:30:02",
+  "timestamp_iso": "2026-04-03T08:30:02.111111",
+  "friend_activity": [
+    {
+      "userPresence": {
+        "UserPresenceType": "InGame",
+        "lastLocation": "Blox Fruits",
+        "placeId": 2753915549,
+        "rootPlaceId": 2753915549,
+        "gameInstanceId": "cccccccc-1111-2222-3333-444444444444",
+        "universeId": 994732206,
+        "lastOnline": "2026-04-03T08:29:30.00Z"
+      },
+      "sortScore": 3008697129070000.0,
+      "id": 2584071277
+    },
+    {
+      "userPresence": {
+        "UserPresenceType": "Offline",
+        "lastLocation": "",
+        "placeId": null,
+        "rootPlaceId": null,
+        "gameInstanceId": null,
+        "universeId": null,
+        "lastOnline": "2026-04-03T08:10:00.00Z"
+      },
+      "sortScore": 0.0,
+      "id": 99887766
+    }
+  ]
+}

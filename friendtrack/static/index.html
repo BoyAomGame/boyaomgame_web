@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FriendTrack</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Monospace for IDs and timestamps */
+    .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+    .pulse { animation: pulse-dot 2s ease-in-out infinite; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+  <!-- All API/asset paths are relative ("./api/...") so the app works both at
+       root "/" and behind Nginx at "/friendtrack/". -->
+  <div class="max-w-5xl mx-auto px-4 py-6">
+
+    <!-- Header -->
+    <header class="mb-6">
+      <div class="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight">FriendTrack</h1>
+          <p class="text-sm text-gray-500">Roblox Friend Activity Explorer</p>
+        </div>
+        <div class="text-right text-xs text-gray-500 space-y-1">
+          <div>
+            <span class="font-semibold text-gray-700" id="snapCount">0</span> snapshots loaded
+          </div>
+          <div>
+            last file: <span class="mono text-gray-600" id="lastLoaded">—</span>
+          </div>
+          <div class="flex items-center justify-end gap-1.5">
+            <span class="inline-block w-2 h-2 rounded-full bg-green-500 pulse" id="refreshDot"></span>
+            <span id="refreshLabel">auto-refresh</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Tabs -->
+    <nav class="flex gap-1 border-b border-gray-200 mb-6">
+      <button data-tab="lastseen" class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-800">Last Seen</button>
+      <button data-tab="overlap"  class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-800">Overlap Events</button>
+      <button data-tab="history"  class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-800">User History</button>
+    </nav>
+
+    <!-- Tab 1: Last Seen -->
+    <section id="tab-lastseen" class="tab-panel">
+      <div class="max-w-md">
+        <label class="block text-sm font-medium text-gray-600 mb-1">Select user</label>
+        <select id="lastSeenUser" class="mono w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-300">
+          <option value="">— pick a user ID —</option>
+        </select>
+      </div>
+      <div id="lastSeenCard" class="mt-5"></div>
+    </section>
+
+    <!-- Tab 2: Overlap Events -->
+    <section id="tab-overlap" class="tab-panel hidden">
+      <div class="max-w-md mb-4">
+        <input id="overlapFilter" type="text" placeholder="Filter by game name or user ID…"
+          class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-300" />
+      </div>
+      <div class="overflow-x-auto border border-gray-200 rounded-lg bg-white">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-100 text-gray-600 text-left">
+            <tr>
+              <th class="px-4 py-2 font-medium whitespace-nowrap">Time</th>
+              <th class="px-4 py-2 font-medium">Game</th>
+              <th class="px-4 py-2 font-medium">Players</th>
+            </tr>
+          </thead>
+          <tbody id="overlapBody" class="divide-y divide-gray-100"></tbody>
+        </table>
+      </div>
+      <p id="overlapEmpty" class="text-sm text-gray-400 mt-4 hidden">No overlap events found.</p>
+    </section>
+
+    <!-- Tab 3: User History -->
+    <section id="tab-history" class="tab-panel hidden">
+      <div class="max-w-md">
+        <label class="block text-sm font-medium text-gray-600 mb-1">Select user</label>
+        <select id="historyUser" class="mono w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-300">
+          <option value="">— pick a user ID —</option>
+        </select>
+      </div>
+      <div id="historyStats" class="mt-4 flex gap-6 text-sm hidden">
+        <div><span class="font-semibold text-gray-800" id="statSessions">0</span> <span class="text-gray-500">sessions</span></div>
+        <div><span class="font-semibold text-gray-800" id="statGames">0</span> <span class="text-gray-500">unique games</span></div>
+      </div>
+      <div id="historyTimeline" class="mt-5"></div>
+    </section>
+
+  </div>
+
+  <script>
+    // ---- API base: relative so it works at "/" and "/friendtrack/" ----
+    const API = "./api";
+
+    const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+    // Format an ISO timestamp as "3 Apr 2026, 08:00". We parse the literal
+    // fields rather than via Date() to avoid timezone-shifting naive local
+    // timestamps in the snapshot data.
+    function fmtTs(iso) {
+      if (!iso) return "—";
+      const m = String(iso).match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+      if (!m) return iso;
+      const [, y, mo, d, h, mi] = m;
+      return `${parseInt(d, 10)} ${MONTHS[parseInt(mo, 10) - 1]} ${y}, ${h}:${mi}`;
+    }
+
+    // Presence type -> badge styling + label.
+    function presenceBadge(type) {
+      const map = {
+        InGame:   { cls: "bg-green-100 text-green-700 ring-green-600/20",  label: "InGame" },
+        InStudio: { cls: "bg-blue-100 text-blue-700 ring-blue-600/20",     label: "InStudio" },
+        Online:   { cls: "bg-yellow-100 text-yellow-700 ring-yellow-600/20", label: "Online" },
+        Offline:  { cls: "bg-gray-100 text-gray-500 ring-gray-500/20",     label: "Offline" },
+      };
+      const s = map[type] || { cls: "bg-gray-100 text-gray-500 ring-gray-500/20", label: type || "Unknown" };
+      return `<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${s.cls}">${s.label}</span>`;
+    }
+
+    function idBadge(id) {
+      return `<span class="mono inline-block rounded bg-gray-100 text-gray-600 px-1.5 py-0.5 text-xs">${id}</span>`;
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      }[c]));
+    }
+
+    async function getJSON(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      return res.json();
+    }
+
+    // ---- Tabs ----
+    const tabButtons = document.querySelectorAll(".tab-btn");
+    tabButtons.forEach((btn) => {
+      btn.addEventListener("click", () => setTab(btn.dataset.tab));
+    });
+
+    function setTab(name) {
+      tabButtons.forEach((b) => {
+        const active = b.dataset.tab === name;
+        b.classList.toggle("border-gray-800", active);
+        b.classList.toggle("text-gray-900", active);
+        b.classList.toggle("border-transparent", !active);
+        b.classList.toggle("text-gray-500", !active);
+      });
+      document.querySelectorAll(".tab-panel").forEach((p) => {
+        p.classList.toggle("hidden", p.id !== `tab-${name}`);
+      });
+      if (name === "overlap") loadOverlap();
+    }
+
+    // ---- Header / polling ----
+    let lastSnapshotCount = -1;
+
+    async function refreshHeader() {
+      try {
+        const data = await getJSON(`${API}/snapshots`);
+        document.getElementById("snapCount").textContent = data.count;
+        document.getElementById("lastLoaded").textContent = fmtTs(data.last_loaded_timestamp);
+        // If new snapshots arrived, refresh the user lists (and overlap if visible).
+        if (data.count !== lastSnapshotCount) {
+          lastSnapshotCount = data.count;
+          await loadUsers();
+          if (!document.getElementById("tab-overlap").classList.contains("hidden")) {
+            loadOverlap();
+          }
+        }
+        flashRefresh(true);
+      } catch (e) {
+        flashRefresh(false);
+      }
+    }
+
+    function flashRefresh(ok) {
+      const dot = document.getElementById("refreshDot");
+      const label = document.getElementById("refreshLabel");
+      dot.classList.toggle("bg-green-500", ok);
+      dot.classList.toggle("bg-red-400", !ok);
+      label.textContent = ok ? "auto-refresh" : "offline";
+    }
+
+    // ---- Users (shared between Tab 1 and Tab 3) ----
+    async function loadUsers() {
+      let users = [];
+      try {
+        users = await getJSON(`${API}/users`);
+      } catch (e) {
+        return;
+      }
+      for (const selId of ["lastSeenUser", "historyUser"]) {
+        const sel = document.getElementById(selId);
+        const current = sel.value;
+        sel.innerHTML = '<option value="">— pick a user ID —</option>' +
+          users.map((u) => `<option value="${u}">${u}</option>`).join("");
+        if (users.map(String).includes(current)) sel.value = current;
+      }
+    }
+
+    // ---- Tab 1: Last Seen ----
+    document.getElementById("lastSeenUser").addEventListener("change", async (e) => {
+      const id = e.target.value;
+      const card = document.getElementById("lastSeenCard");
+      if (!id) { card.innerHTML = ""; return; }
+      try {
+        const d = await getJSON(`${API}/user/${id}/latest`);
+        const loc = d.lastLocation || "—";
+        const universe = d.universeId != null ? d.universeId : "—";
+        card.innerHTML = `
+          <div class="max-w-md rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+              ${presenceBadge(d.UserPresenceType)}
+              <span class="mono text-xs text-gray-400">${id}</span>
+            </div>
+            <dl class="space-y-3 text-sm">
+              <div>
+                <dt class="text-gray-400 text-xs uppercase tracking-wide">Last location</dt>
+                <dd class="text-gray-800">${escapeHtml(loc)}</dd>
+              </div>
+              <div>
+                <dt class="text-gray-400 text-xs uppercase tracking-wide">Last seen</dt>
+                <dd class="mono text-gray-800">${fmtTs(d.last_seen_timestamp)}</dd>
+              </div>
+              <div>
+                <dt class="text-gray-400 text-xs uppercase tracking-wide">Universe ID</dt>
+                <dd class="mono text-gray-600">${universe}</dd>
+              </div>
+            </dl>
+          </div>`;
+      } catch (err) {
+        card.innerHTML = `<p class="text-sm text-red-500">Could not load user (${escapeHtml(err.message)}).</p>`;
+      }
+    });
+
+    // ---- Tab 2: Overlap Events ----
+    let overlapData = [];
+
+    async function loadOverlap() {
+      try {
+        overlapData = await getJSON(`${API}/overlap/all`);
+      } catch (e) {
+        overlapData = [];
+      }
+      renderOverlap();
+    }
+
+    function renderOverlap() {
+      const body = document.getElementById("overlapBody");
+      const empty = document.getElementById("overlapEmpty");
+      const q = document.getElementById("overlapFilter").value.trim().toLowerCase();
+
+      const rows = overlapData.filter((ev) => {
+        if (!q) return true;
+        const inGame = (ev.lastLocation || "").toLowerCase().includes(q);
+        const inUsers = ev.user_ids.some((u) => String(u).includes(q));
+        return inGame || inUsers;
+      });
+
+      if (rows.length === 0) {
+        body.innerHTML = "";
+        empty.classList.remove("hidden");
+        empty.textContent = overlapData.length === 0
+          ? "No overlap events found." : "No matches for that filter.";
+        return;
+      }
+      empty.classList.add("hidden");
+
+      body.innerHTML = rows.map((ev) => {
+        const players = ev.user_ids.map(idBadge).join(" ");
+        const game = ev.lastLocation
+          ? escapeHtml(ev.lastLocation)
+          : `<span class="text-gray-400">universe ${ev.universeId}</span>`;
+        return `
+          <tr class="hover:bg-gray-50 align-top">
+            <td class="px-4 py-2 mono text-xs text-gray-600 whitespace-nowrap">${fmtTs(ev.snapshot_timestamp)}</td>
+            <td class="px-4 py-2 text-gray-800">${game}
+              <div class="mono text-xs text-gray-400">universe ${ev.universeId}</div>
+            </td>
+            <td class="px-4 py-2"><div class="flex flex-wrap gap-1">${players}</div></td>
+          </tr>`;
+      }).join("");
+    }
+
+    document.getElementById("overlapFilter").addEventListener("input", renderOverlap);
+
+    // ---- Tab 3: User History ----
+    document.getElementById("historyUser").addEventListener("change", async (e) => {
+      const id = e.target.value;
+      const timeline = document.getElementById("historyTimeline");
+      const stats = document.getElementById("historyStats");
+      if (!id) { timeline.innerHTML = ""; stats.classList.add("hidden"); return; }
+
+      let history = [];
+      try {
+        history = await getJSON(`${API}/user/${id}/history`);
+      } catch (err) {
+        timeline.innerHTML = `<p class="text-sm text-red-500">Could not load history (${escapeHtml(err.message)}).</p>`;
+        stats.classList.add("hidden");
+        return;
+      }
+
+      if (history.length === 0) {
+        timeline.innerHTML = `<p class="text-sm text-gray-400">No history for this user.</p>`;
+        stats.classList.add("hidden");
+        return;
+      }
+
+      // Group consecutive entries that share the same universeId (null grouped together).
+      const groups = [];
+      for (const entry of history) {
+        const key = entry.universeId == null ? `none-${entry.UserPresenceType}` : `u-${entry.universeId}`;
+        const last = groups[groups.length - 1];
+        if (last && last.key === key) {
+          last.entries.push(entry);
+        } else {
+          groups.push({ key, universeId: entry.universeId, entries: [entry] });
+        }
+      }
+
+      // Stats: a "session" is a consecutive in-game group; unique games = distinct universeIds.
+      const gameGroups = groups.filter((g) => g.universeId != null);
+      const uniqueGames = new Set(history.filter((h) => h.universeId != null).map((h) => h.universeId));
+      document.getElementById("statSessions").textContent = gameGroups.length;
+      document.getElementById("statGames").textContent = uniqueGames.size;
+      stats.classList.remove("hidden");
+
+      // Render newest first.
+      const ordered = groups.slice().reverse();
+      timeline.innerHTML = `<ol class="relative border-l border-gray-200 ml-3 space-y-4">` +
+        ordered.map((g, i) => renderGroup(g, i)).join("") + `</ol>`;
+
+      timeline.querySelectorAll("[data-toggle]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const panel = timeline.querySelector(`#grp-${btn.dataset.toggle}`);
+          const caret = btn.querySelector("[data-caret]");
+          const hidden = panel.classList.toggle("hidden");
+          if (caret) caret.textContent = hidden ? "▸" : "▾";
+        });
+      });
+    });
+
+    function renderGroup(g, idx) {
+      const first = g.entries[0];
+      const last = g.entries[g.entries.length - 1];
+      const gameName = first.lastLocation
+        ? escapeHtml(first.lastLocation)
+        : (g.universeId != null ? `universe ${g.universeId}` : (first.UserPresenceType || "—"));
+      const count = g.entries.length;
+
+      // entries within a group are chronological; show the span end ← start.
+      const start = fmtTs(first.timestamp);
+      const end = fmtTs(last.timestamp);
+      const range = count > 1 && start !== end ? `${end} ← ${start}` : start;
+
+      const dotColor = {
+        InGame: "bg-green-500", InStudio: "bg-blue-500",
+        Online: "bg-yellow-500", Offline: "bg-gray-400",
+      }[first.UserPresenceType] || "bg-gray-400";
+
+      // Single-entry group: render flat, no expander.
+      if (count === 1) {
+        return `
+          <li class="ml-4">
+            <span class="absolute -left-[7px] w-3 h-3 rounded-full ${dotColor} ring-2 ring-white"></span>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="mono text-xs text-gray-500">${start}</span>
+              ${presenceBadge(first.UserPresenceType)}
+              <span class="text-sm text-gray-800">${gameName}</span>
+            </div>
+          </li>`;
+      }
+
+      // Multi-entry group: collapsed by default, expandable.
+      const inner = g.entries.slice().reverse().map((ent) => `
+        <li class="flex items-center gap-2 flex-wrap py-0.5">
+          <span class="mono text-xs text-gray-400">${fmtTs(ent.timestamp)}</span>
+          ${presenceBadge(ent.UserPresenceType)}
+          ${ent.gameInstanceId ? `<span class="mono text-[10px] text-gray-300">${escapeHtml(ent.gameInstanceId)}</span>` : ""}
+        </li>`).join("");
+
+      return `
+        <li class="ml-4">
+          <span class="absolute -left-[7px] w-3 h-3 rounded-full ${dotColor} ring-2 ring-white"></span>
+          <button data-toggle="${idx}" class="flex items-center gap-2 flex-wrap text-left w-full group">
+            <span data-caret class="text-gray-400 text-xs">▸</span>
+            <span class="mono text-xs text-gray-500">${range}</span>
+            ${presenceBadge(first.UserPresenceType)}
+            <span class="text-sm text-gray-800">${gameName}</span>
+            <span class="text-xs text-gray-400">×${count}</span>
+          </button>
+          <ul id="grp-${idx}" class="hidden mt-1 ml-5 border-l border-gray-100 pl-3">${inner}</ul>
+        </li>`;
+    }
+
+    // ---- Boot ----
+    setTab("lastseen");
+    refreshHeader();
+    setInterval(refreshHeader, 10000);
+  </script>
+</body>
+</html>

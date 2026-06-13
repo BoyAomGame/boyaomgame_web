@@ -1,0 +1,45 @@
+{
+  "timestamp_local": "2026-04-03 08:00:01",
+  "timestamp_iso": "2026-04-03T08:00:01.418359",
+  "friend_activity": [
+    {
+      "userPresence": {
+        "UserPresenceType": "InGame",
+        "lastLocation": "Adopt Me!",
+        "placeId": 920587237,
+        "rootPlaceId": 920587237,
+        "gameInstanceId": "aaaaaaaa-1111-2222-3333-444444444444",
+        "universeId": 383310974,
+        "lastOnline": "2026-04-03T07:59:43.87Z"
+      },
+      "sortScore": 3008697129060827.0,
+      "id": 2584071277
+    },
+    {
+      "userPresence": {
+        "UserPresenceType": "InGame",
+        "lastLocation": "Adopt Me!",
+        "placeId": 920587900,
+        "rootPlaceId": 920587237,
+        "gameInstanceId": "bbbbbbbb-1111-2222-3333-444444444444",
+        "universeId": 383310974,
+        "lastOnline": "2026-04-03T07:58:10.10Z"
+      },
+      "sortScore": 3008697129060000.0,
+      "id": 99887766
+    },
+    {
+      "userPresence": {
+        "UserPresenceType": "Online",
+        "lastLocation": "Website",
+        "placeId": null,
+        "rootPlaceId": null,
+        "gameInstanceId": null,
+        "universeId": null,
+        "lastOnline": "2026-04-03T07:55:00.00Z"
+      },
+      "sortScore": 12345.0,
+      "id": 55554444
+    }
+  ]
+}
