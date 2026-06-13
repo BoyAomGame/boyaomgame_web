@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
+import roblox
 from loader import DataStore
 
 DATA_DIR = os.environ.get("FRIENDTRACK_DATA_DIR", "./data")
@@ -91,12 +92,23 @@ def api_snapshots():
         "snapshots": snapshots,
         "last_loaded_file": store.last_loaded_file,
         "last_loaded_timestamp": store.last_loaded_timestamp,
+        "last_loaded_timestamp_utc": store.last_loaded_timestamp_utc,
     }
 
 
 @app.get("/api/users")
 def api_users():
     return store.get_users()
+
+
+@app.get("/api/profiles")
+async def api_profiles(userIds: str = Query(None, description="Comma-separated IDs; defaults to all known users")):
+    """Resolve user IDs to {username, displayName, avatarUrl} via Roblox."""
+    if userIds:
+        ids = [int(p) for p in userIds.split(",") if p.strip().isdigit()]
+    else:
+        ids = store.get_users()
+    return await roblox.resolve_profiles(ids)
 
 
 @app.get("/api/user/{user_id}/history")
@@ -120,6 +132,14 @@ def api_overlap(universeId: int = Query(..., description="Universe ID to inspect
 @app.get("/api/overlap/all")
 def api_overlap_all():
     return store.get_overlap_all()
+
+
+@app.get("/api/overlap/pair")
+def api_overlap_pair(
+    userA: int = Query(..., description="First user ID"),
+    userB: int = Query(..., description="Second user ID"),
+):
+    return store.get_overlap_pair(userA, userB)
 
 
 if __name__ == "__main__":

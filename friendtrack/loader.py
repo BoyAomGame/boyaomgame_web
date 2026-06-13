@@ -41,6 +41,16 @@ def _parse_iso(value):
     return dt.astimezone(timezone.utc)
 
 
+def _to_utc_iso(value):
+    """Return an explicit UTC ISO string (``...+00:00``) the browser can parse.
+
+    Naive snapshot timestamps are treated as UTC (the capture VPS runs in UTC),
+    so the frontend can render them in the viewer's local timezone.
+    """
+    dt = _parse_iso(value)
+    return dt.isoformat() if dt is not None else None
+
+
 class DataStore:
     """Thread-safe in-memory collection of parsed snapshots."""
 
@@ -51,6 +61,7 @@ class DataStore:
         self._lock = RLock()
         self.last_loaded_file = None
         self.last_loaded_timestamp = None
+        self.last_loaded_timestamp_utc = None
 
     # ------------------------------------------------------------------
     # Loading
@@ -106,6 +117,7 @@ class DataStore:
         record = {
             "timestamp_iso": ts_iso,
             "timestamp_local": ts_local,
+            "timestamp_utc": _to_utc_iso(ts_iso),
             "filename": name,
             "entries": entries,
         }
@@ -115,6 +127,7 @@ class DataStore:
             self._loaded_files.add(name)
             self.last_loaded_file = name
             self.last_loaded_timestamp = ts_iso
+            self.last_loaded_timestamp_utc = record["timestamp_utc"]
         return True
 
     # ------------------------------------------------------------------
@@ -165,6 +178,7 @@ class DataStore:
                         {
                             "timestamp": rec["timestamp_iso"],
                             "timestamp_local": rec["timestamp_local"],
+                            "timestamp_utc": rec.get("timestamp_utc"),
                             "UserPresenceType": entry["UserPresenceType"],
                             "lastLocation": entry["lastLocation"],
                             "universeId": entry["universeId"],
@@ -181,6 +195,7 @@ class DataStore:
                     return {
                         "user_id": user_id,
                         "last_seen_timestamp": rec["timestamp_iso"],
+                        "last_seen_timestamp_utc": rec.get("timestamp_utc"),
                         "UserPresenceType": entry["UserPresenceType"],
                         "lastLocation": entry["lastLocation"],
                         "universeId": entry["universeId"],
@@ -212,6 +227,7 @@ class DataStore:
                 events.append(
                     {
                         "snapshot_timestamp": rec["timestamp_iso"],
+                        "snapshot_timestamp_utc": rec.get("timestamp_utc"),
                         "universeId": universe,
                         "lastLocation": locations.get(universe),
                         "user_ids": unique,
@@ -231,4 +247,29 @@ class DataStore:
         events = []
         for rec in self._sorted_snapshots(newest_first=True):
             events.extend(self._overlap_for_snapshot(rec))
+        return events
+
+    def get_overlap_pair(self, user_a, user_b):
+        """Snapshots where both users were in the same universeId, newest first."""
+        events = []
+        for rec in self._sorted_snapshots(newest_first=True):
+            a_universe = a_loc = None
+            b_universe = b_loc = None
+            for entry in rec["entries"]:
+                if entry["universeId"] is None:
+                    continue
+                if entry["user_id"] == user_a:
+                    a_universe, a_loc = entry["universeId"], entry["lastLocation"]
+                elif entry["user_id"] == user_b:
+                    b_universe, b_loc = entry["universeId"], entry["lastLocation"]
+            if a_universe is not None and a_universe == b_universe:
+                events.append(
+                    {
+                        "snapshot_timestamp": rec["timestamp_iso"],
+                        "snapshot_timestamp_utc": rec.get("timestamp_utc"),
+                        "universeId": a_universe,
+                        "lastLocation": a_loc or b_loc,
+                        "user_ids": sorted({user_a, user_b}),
+                    }
+                )
         return events

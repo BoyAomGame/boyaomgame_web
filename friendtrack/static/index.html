@@ -10,6 +10,12 @@
     .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
     @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
     .pulse { animation: pulse-dot 2s ease-in-out infinite; }
+    /* Avatar: initial-letter circle with the Roblox headshot layered on top.
+       If the image fails to load it removes itself, revealing the initial. */
+    .av { position: relative; display: inline-flex; align-items: center; justify-content: center;
+          border-radius: 9999px; background: #e5e7eb; color: #6b7280; overflow: hidden;
+          flex: 0 0 auto; font-weight: 600; }
+    .av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen">
@@ -35,6 +41,7 @@
             <span class="inline-block w-2 h-2 rounded-full bg-green-500 pulse" id="refreshDot"></span>
             <span id="refreshLabel">auto-refresh</span>
           </div>
+          <div class="text-gray-400">times in <span id="tzLabel">local</span></div>
         </div>
       </div>
     </header>
@@ -49,16 +56,37 @@
     <!-- Tab 1: Last Seen -->
     <section id="tab-lastseen" class="tab-panel">
       <div class="max-w-md">
-        <label class="block text-sm font-medium text-gray-600 mb-1">Select user</label>
-        <select id="lastSeenUser" class="mono w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-300">
-          <option value="">— pick a user ID —</option>
-        </select>
+        <label class="block text-sm font-medium text-gray-600 mb-1">Search user</label>
+        <div class="combo relative" id="combo-lastseen">
+          <input type="text" class="combo-input mono w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-300" placeholder="Type a name or ID…" autocomplete="off" />
+          <div class="combo-panel hidden absolute z-20 mt-1 w-full max-h-72 overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"></div>
+        </div>
       </div>
       <div id="lastSeenCard" class="mt-5"></div>
     </section>
 
     <!-- Tab 2: Overlap Events -->
     <section id="tab-overlap" class="tab-panel hidden">
+      <div class="grid sm:grid-cols-2 gap-3 max-w-2xl mb-3">
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">User A</label>
+          <div class="combo relative" id="combo-a">
+            <input type="text" class="combo-input mono w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-300" placeholder="Pick a user…" autocomplete="off" />
+            <div class="combo-panel hidden absolute z-20 mt-1 w-full max-h-72 overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"></div>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">User B</label>
+          <div class="combo relative" id="combo-b">
+            <input type="text" class="combo-input mono w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-300" placeholder="Pick a user…" autocomplete="off" />
+            <div class="combo-panel hidden absolute z-20 mt-1 w-full max-h-72 overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"></div>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 mb-4 flex-wrap">
+        <p class="text-xs text-gray-400" id="overlapMode">Showing all overlap events. Pick User A + User B to find their shared sessions.</p>
+        <button id="overlapReset" class="text-xs text-gray-500 underline hover:text-gray-800 hidden">clear pair</button>
+      </div>
       <div class="max-w-md mb-4">
         <input id="overlapFilter" type="text" placeholder="Filter by game name or user ID…"
           class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-300" />
@@ -81,14 +109,18 @@
     <!-- Tab 3: User History -->
     <section id="tab-history" class="tab-panel hidden">
       <div class="max-w-md">
-        <label class="block text-sm font-medium text-gray-600 mb-1">Select user</label>
-        <select id="historyUser" class="mono w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-300">
-          <option value="">— pick a user ID —</option>
-        </select>
+        <label class="block text-sm font-medium text-gray-600 mb-1">Search user</label>
+        <div class="combo relative" id="combo-history">
+          <input type="text" class="combo-input mono w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-300" placeholder="Type a name or ID…" autocomplete="off" />
+          <div class="combo-panel hidden absolute z-20 mt-1 w-full max-h-72 overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"></div>
+        </div>
       </div>
-      <div id="historyStats" class="mt-4 flex gap-6 text-sm hidden">
-        <div><span class="font-semibold text-gray-800" id="statSessions">0</span> <span class="text-gray-500">sessions</span></div>
-        <div><span class="font-semibold text-gray-800" id="statGames">0</span> <span class="text-gray-500">unique games</span></div>
+      <div id="historyHeader" class="mt-4 hidden">
+        <div id="historyUserChip" class="mb-2"></div>
+        <div class="flex gap-6 text-sm">
+          <div><span class="font-semibold text-gray-800" id="statSessions">0</span> <span class="text-gray-500">sessions</span></div>
+          <div><span class="font-semibold text-gray-800" id="statGames">0</span> <span class="text-gray-500">unique games</span></div>
+        </div>
       </div>
       <div id="historyTimeline" class="mt-5"></div>
     </section>
@@ -99,33 +131,31 @@
     // ---- API base: relative so it works at "/" and "/friendtrack/" ----
     const API = "./api";
 
-    const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    // Profile cache: id (string) -> {userId, username, displayName, avatarUrl}
+    let profiles = {};
+    let userIds = [];   // numeric IDs from /api/users
 
-    // Format an ISO timestamp as "3 Apr 2026, 08:00". We parse the literal
-    // fields rather than via Date() to avoid timezone-shifting naive local
-    // timestamps in the snapshot data.
-    function fmtTs(iso) {
-      if (!iso) return "—";
-      const m = String(iso).match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
-      if (!m) return iso;
-      const [, y, mo, d, h, mi] = m;
-      return `${parseInt(d, 10)} ${MONTHS[parseInt(mo, 10) - 1]} ${y}, ${h}:${mi}`;
+    // ---- Time formatting (render UTC timestamps in the viewer's local zone) ----
+    function fmtTs(utcIso) {
+      if (!utcIso) return "—";
+      const d = new Date(utcIso);
+      if (isNaN(d.getTime())) return utcIso;
+      return d.toLocaleString(undefined, {
+        day: "numeric", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit", hour12: false,
+      });
     }
 
-    // Presence type -> badge styling + label.
+    // ---- Presence badges ----
     function presenceBadge(type) {
       const map = {
-        InGame:   { cls: "bg-green-100 text-green-700 ring-green-600/20",  label: "InGame" },
-        InStudio: { cls: "bg-blue-100 text-blue-700 ring-blue-600/20",     label: "InStudio" },
+        InGame:   { cls: "bg-green-100 text-green-700 ring-green-600/20",   label: "InGame" },
+        InStudio: { cls: "bg-blue-100 text-blue-700 ring-blue-600/20",      label: "InStudio" },
         Online:   { cls: "bg-yellow-100 text-yellow-700 ring-yellow-600/20", label: "Online" },
-        Offline:  { cls: "bg-gray-100 text-gray-500 ring-gray-500/20",     label: "Offline" },
+        Offline:  { cls: "bg-gray-100 text-gray-500 ring-gray-500/20",      label: "Offline" },
       };
       const s = map[type] || { cls: "bg-gray-100 text-gray-500 ring-gray-500/20", label: type || "Unknown" };
       return `<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${s.cls}">${s.label}</span>`;
-    }
-
-    function idBadge(id) {
-      return `<span class="mono inline-block rounded bg-gray-100 text-gray-600 px-1.5 py-0.5 text-xs">${id}</span>`;
     }
 
     function escapeHtml(str) {
@@ -134,17 +164,118 @@
       }[c]));
     }
 
+    // ---- Identity helpers ----
+    function nameFor(id) {
+      const p = profiles[String(id)] || {};
+      return {
+        userId: id,
+        displayName: p.displayName || String(id),
+        username: p.username || null,
+        avatarUrl: p.avatarUrl || null,
+      };
+    }
+
+    // Avatar circle (px = diameter). Falls back to the display-name initial.
+    function avatar(p, px) {
+      const initial = escapeHtml((p.displayName || "?").trim().charAt(0).toUpperCase() || "?");
+      const fs = Math.max(9, Math.floor(px * 0.45));
+      const img = p.avatarUrl
+        ? `<img src="${escapeHtml(p.avatarUrl)}" alt="" loading="lazy" onerror="this.remove()">`
+        : "";
+      return `<span class="av" style="width:${px}px;height:${px}px;font-size:${fs}px">${initial}${img}</span>`;
+    }
+
+    // Compact player badge for the overlap table.
+    function playerBadge(id) {
+      const p = nameFor(id);
+      const title = (p.username ? "@" + p.username + " · " : "") + id;
+      return `<span class="inline-flex items-center gap-1 rounded-full bg-gray-100 pl-0.5 pr-2 py-0.5" title="${escapeHtml(title)}">`
+        + avatar(p, 20)
+        + `<span class="text-xs text-gray-700">${escapeHtml(p.displayName)}</span></span>`;
+    }
+
     async function getJSON(url) {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       return res.json();
     }
 
+    // ---- Searchable combobox ----
+    function createCombo(rootId, onSelect) {
+      const root = document.getElementById(rootId);
+      const input = root.querySelector(".combo-input");
+      const panel = root.querySelector(".combo-panel");
+      let items = [];
+      let active = -1;
+      let selectedId = null;
+
+      function render() {
+        const q = input.value.trim().toLowerCase();
+        items = userIds.filter((id) => {
+          if (!q) return true;
+          const p = nameFor(id);
+          return String(id).includes(q)
+            || (p.displayName || "").toLowerCase().includes(q)
+            || (p.username || "").toLowerCase().includes(q);
+        }).slice(0, 60);
+
+        if (items.length === 0) {
+          panel.innerHTML = `<div class="px-3 py-2 text-sm text-gray-400">No matches</div>`;
+        } else {
+          panel.innerHTML = items.map((id, i) => {
+            const p = nameFor(id);
+            const sub = p.username ? "@" + escapeHtml(p.username) : String(id);
+            return `<button type="button" data-i="${i}" class="combo-item flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-gray-50 ${i === active ? "bg-gray-50" : ""}">`
+              + avatar(p, 28)
+              + `<span class="min-w-0">`
+              + `<span class="block text-sm text-gray-800 truncate">${escapeHtml(p.displayName)}</span>`
+              + `<span class="block mono text-xs text-gray-400 truncate">${sub}</span>`
+              + `</span></button>`;
+          }).join("");
+        }
+        panel.classList.remove("hidden");
+      }
+
+      function choose(id) {
+        selectedId = id;
+        const p = nameFor(id);
+        input.value = p.displayName + (p.username ? ` (@${p.username})` : "");
+        panel.classList.add("hidden");
+        onSelect(id);
+      }
+
+      input.addEventListener("focus", () => { input.select(); render(); });
+      input.addEventListener("input", () => {
+        active = -1;
+        const wasSelected = selectedId;
+        selectedId = null;
+        render();
+        if (input.value.trim() === "" && wasSelected != null) onSelect(null);
+      });
+      input.addEventListener("keydown", (e) => {
+        if (panel.classList.contains("hidden")) return;
+        if (e.key === "ArrowDown") { e.preventDefault(); active = Math.min(active + 1, items.length - 1); render(); }
+        else if (e.key === "ArrowUp") { e.preventDefault(); active = Math.max(active - 1, 0); render(); }
+        else if (e.key === "Enter") { e.preventDefault(); if (active >= 0 && items[active] != null) choose(items[active]); }
+        else if (e.key === "Escape") { panel.classList.add("hidden"); }
+      });
+      // mousedown (not click) so selection wins over the input losing focus.
+      panel.addEventListener("mousedown", (e) => {
+        const btn = e.target.closest(".combo-item");
+        if (btn) { e.preventDefault(); choose(items[parseInt(btn.dataset.i, 10)]); }
+      });
+      document.addEventListener("click", (e) => { if (!root.contains(e.target)) panel.classList.add("hidden"); });
+
+      return {
+        refresh: () => { if (!panel.classList.contains("hidden")) render(); },
+        clear: () => { input.value = ""; selectedId = null; panel.classList.add("hidden"); },
+        get value() { return selectedId; },
+      };
+    }
+
     // ---- Tabs ----
     const tabButtons = document.querySelectorAll(".tab-btn");
-    tabButtons.forEach((btn) => {
-      btn.addEventListener("click", () => setTab(btn.dataset.tab));
-    });
+    tabButtons.forEach((btn) => btn.addEventListener("click", () => setTab(btn.dataset.tab)));
 
     function setTab(name) {
       tabButtons.forEach((b) => {
@@ -157,7 +288,7 @@
       document.querySelectorAll(".tab-panel").forEach((p) => {
         p.classList.toggle("hidden", p.id !== `tab-${name}`);
       });
-      if (name === "overlap") loadOverlap();
+      if (name === "overlap") refreshOverlapSource();
     }
 
     // ---- Header / polling ----
@@ -167,13 +298,12 @@
       try {
         const data = await getJSON(`${API}/snapshots`);
         document.getElementById("snapCount").textContent = data.count;
-        document.getElementById("lastLoaded").textContent = fmtTs(data.last_loaded_timestamp);
-        // If new snapshots arrived, refresh the user lists (and overlap if visible).
+        document.getElementById("lastLoaded").textContent = fmtTs(data.last_loaded_timestamp_utc);
         if (data.count !== lastSnapshotCount) {
           lastSnapshotCount = data.count;
           await loadUsers();
           if (!document.getElementById("tab-overlap").classList.contains("hidden")) {
-            loadOverlap();
+            refreshOverlapSource();
           }
         }
         flashRefresh(true);
@@ -184,43 +314,47 @@
 
     function flashRefresh(ok) {
       const dot = document.getElementById("refreshDot");
-      const label = document.getElementById("refreshLabel");
       dot.classList.toggle("bg-green-500", ok);
       dot.classList.toggle("bg-red-400", !ok);
-      label.textContent = ok ? "auto-refresh" : "offline";
+      document.getElementById("refreshLabel").textContent = ok ? "auto-refresh" : "offline";
     }
 
-    // ---- Users (shared between Tab 1 and Tab 3) ----
+    // ---- Users + profiles ----
     async function loadUsers() {
-      let users = [];
       try {
-        users = await getJSON(`${API}/users`);
+        userIds = await getJSON(`${API}/users`);
       } catch (e) {
         return;
       }
-      for (const selId of ["lastSeenUser", "historyUser"]) {
-        const sel = document.getElementById(selId);
-        const current = sel.value;
-        sel.innerHTML = '<option value="">— pick a user ID —</option>' +
-          users.map((u) => `<option value="${u}">${u}</option>`).join("");
-        if (users.map(String).includes(current)) sel.value = current;
+      try {
+        profiles = await getJSON(`${API}/profiles`);
+      } catch (e) {
+        profiles = profiles || {};
       }
+      comboLastSeen.refresh();
+      comboHistory.refresh();
+      comboA.refresh();
+      comboB.refresh();
     }
 
     // ---- Tab 1: Last Seen ----
-    document.getElementById("lastSeenUser").addEventListener("change", async (e) => {
-      const id = e.target.value;
+    function onLastSeenSelect(id) {
       const card = document.getElementById("lastSeenCard");
-      if (!id) { card.innerHTML = ""; return; }
-      try {
-        const d = await getJSON(`${API}/user/${id}/latest`);
+      if (id == null) { card.innerHTML = ""; return; }
+      getJSON(`${API}/user/${id}/latest`).then((d) => {
+        const p = nameFor(id);
         const loc = d.lastLocation || "—";
         const universe = d.universeId != null ? d.universeId : "—";
+        const sub = (p.username ? "@" + escapeHtml(p.username) + " · " : "") + id;
         card.innerHTML = `
           <div class="max-w-md rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <div class="flex items-center justify-between mb-4">
-              ${presenceBadge(d.UserPresenceType)}
-              <span class="mono text-xs text-gray-400">${id}</span>
+            <div class="flex items-center gap-3 mb-4">
+              ${avatar(p, 56)}
+              <div class="min-w-0">
+                <div class="text-lg font-semibold text-gray-900 truncate">${escapeHtml(p.displayName)}</div>
+                <div class="mono text-xs text-gray-400 truncate">${sub}</div>
+              </div>
+              <div class="ml-auto">${presenceBadge(d.UserPresenceType)}</div>
             </div>
             <dl class="space-y-3 text-sm">
               <div>
@@ -229,7 +363,7 @@
               </div>
               <div>
                 <dt class="text-gray-400 text-xs uppercase tracking-wide">Last seen</dt>
-                <dd class="mono text-gray-800">${fmtTs(d.last_seen_timestamp)}</dd>
+                <dd class="mono text-gray-800">${fmtTs(d.last_seen_timestamp_utc)}</dd>
               </div>
               <div>
                 <dt class="text-gray-400 text-xs uppercase tracking-wide">Universe ID</dt>
@@ -237,17 +371,32 @@
               </div>
             </dl>
           </div>`;
-      } catch (err) {
+      }).catch((err) => {
         card.innerHTML = `<p class="text-sm text-red-500">Could not load user (${escapeHtml(err.message)}).</p>`;
-      }
-    });
+      });
+    }
 
     // ---- Tab 2: Overlap Events ----
     let overlapData = [];
+    let pairMode = false;
 
-    async function loadOverlap() {
+    async function refreshOverlapSource() {
+      const a = comboA.value, b = comboB.value;
+      const modeEl = document.getElementById("overlapMode");
+      const resetEl = document.getElementById("overlapReset");
       try {
-        overlapData = await getJSON(`${API}/overlap/all`);
+        if (a != null && b != null) {
+          pairMode = true;
+          overlapData = await getJSON(`${API}/overlap/pair?userA=${a}&userB=${b}`);
+          const na = nameFor(a), nb = nameFor(b);
+          modeEl.textContent = `Shared sessions: ${na.displayName} ↔ ${nb.displayName}`;
+          resetEl.classList.remove("hidden");
+        } else {
+          pairMode = false;
+          overlapData = await getJSON(`${API}/overlap/all`);
+          modeEl.textContent = "Showing all overlap events. Pick User A + User B to find their shared sessions.";
+          resetEl.classList.add("hidden");
+        }
       } catch (e) {
         overlapData = [];
       }
@@ -262,7 +411,12 @@
       const rows = overlapData.filter((ev) => {
         if (!q) return true;
         const inGame = (ev.lastLocation || "").toLowerCase().includes(q);
-        const inUsers = ev.user_ids.some((u) => String(u).includes(q));
+        const inUsers = ev.user_ids.some((u) => {
+          const p = nameFor(u);
+          return String(u).includes(q)
+            || (p.displayName || "").toLowerCase().includes(q)
+            || (p.username || "").toLowerCase().includes(q);
+        });
         return inGame || inUsers;
       });
 
@@ -270,19 +424,20 @@
         body.innerHTML = "";
         empty.classList.remove("hidden");
         empty.textContent = overlapData.length === 0
-          ? "No overlap events found." : "No matches for that filter.";
+          ? (pairMode ? "These two users were never in the same game." : "No overlap events found.")
+          : "No matches for that filter.";
         return;
       }
       empty.classList.add("hidden");
 
       body.innerHTML = rows.map((ev) => {
-        const players = ev.user_ids.map(idBadge).join(" ");
+        const players = ev.user_ids.map(playerBadge).join(" ");
         const game = ev.lastLocation
           ? escapeHtml(ev.lastLocation)
           : `<span class="text-gray-400">universe ${ev.universeId}</span>`;
         return `
           <tr class="hover:bg-gray-50 align-top">
-            <td class="px-4 py-2 mono text-xs text-gray-600 whitespace-nowrap">${fmtTs(ev.snapshot_timestamp)}</td>
+            <td class="px-4 py-2 mono text-xs text-gray-600 whitespace-nowrap">${fmtTs(ev.snapshot_timestamp_utc)}</td>
             <td class="px-4 py-2 text-gray-800">${game}
               <div class="mono text-xs text-gray-400">universe ${ev.universeId}</div>
             </td>
@@ -291,63 +446,58 @@
       }).join("");
     }
 
-    document.getElementById("overlapFilter").addEventListener("input", renderOverlap);
-
     // ---- Tab 3: User History ----
-    document.getElementById("historyUser").addEventListener("change", async (e) => {
-      const id = e.target.value;
+    function onHistorySelect(id) {
       const timeline = document.getElementById("historyTimeline");
-      const stats = document.getElementById("historyStats");
-      if (!id) { timeline.innerHTML = ""; stats.classList.add("hidden"); return; }
+      const header = document.getElementById("historyHeader");
+      if (id == null) { timeline.innerHTML = ""; header.classList.add("hidden"); return; }
 
-      let history = [];
-      try {
-        history = await getJSON(`${API}/user/${id}/history`);
-      } catch (err) {
-        timeline.innerHTML = `<p class="text-sm text-red-500">Could not load history (${escapeHtml(err.message)}).</p>`;
-        stats.classList.add("hidden");
-        return;
-      }
+      getJSON(`${API}/user/${id}/history`).then((history) => {
+        const p = nameFor(id);
+        const sub = (p.username ? "@" + escapeHtml(p.username) + " · " : "") + id;
+        document.getElementById("historyUserChip").innerHTML =
+          `<span class="inline-flex items-center gap-2">${avatar(p, 32)}`
+          + `<span><span class="text-sm font-semibold text-gray-900">${escapeHtml(p.displayName)}</span> `
+          + `<span class="mono text-xs text-gray-400">${sub}</span></span></span>`;
 
-      if (history.length === 0) {
-        timeline.innerHTML = `<p class="text-sm text-gray-400">No history for this user.</p>`;
-        stats.classList.add("hidden");
-        return;
-      }
-
-      // Group consecutive entries that share the same universeId (null grouped together).
-      const groups = [];
-      for (const entry of history) {
-        const key = entry.universeId == null ? `none-${entry.UserPresenceType}` : `u-${entry.universeId}`;
-        const last = groups[groups.length - 1];
-        if (last && last.key === key) {
-          last.entries.push(entry);
-        } else {
-          groups.push({ key, universeId: entry.universeId, entries: [entry] });
+        if (history.length === 0) {
+          timeline.innerHTML = `<p class="text-sm text-gray-400">No history for this user.</p>`;
+          header.classList.add("hidden");
+          return;
         }
-      }
 
-      // Stats: a "session" is a consecutive in-game group; unique games = distinct universeIds.
-      const gameGroups = groups.filter((g) => g.universeId != null);
-      const uniqueGames = new Set(history.filter((h) => h.universeId != null).map((h) => h.universeId));
-      document.getElementById("statSessions").textContent = gameGroups.length;
-      document.getElementById("statGames").textContent = uniqueGames.size;
-      stats.classList.remove("hidden");
+        // Group consecutive entries sharing the same universeId (null grouped together).
+        const groups = [];
+        for (const entry of history) {
+          const key = entry.universeId == null ? `none-${entry.UserPresenceType}` : `u-${entry.universeId}`;
+          const last = groups[groups.length - 1];
+          if (last && last.key === key) last.entries.push(entry);
+          else groups.push({ key, universeId: entry.universeId, entries: [entry] });
+        }
 
-      // Render newest first.
-      const ordered = groups.slice().reverse();
-      timeline.innerHTML = `<ol class="relative border-l border-gray-200 ml-3 space-y-4">` +
-        ordered.map((g, i) => renderGroup(g, i)).join("") + `</ol>`;
+        const gameGroups = groups.filter((g) => g.universeId != null);
+        const uniqueGames = new Set(history.filter((h) => h.universeId != null).map((h) => h.universeId));
+        document.getElementById("statSessions").textContent = gameGroups.length;
+        document.getElementById("statGames").textContent = uniqueGames.size;
+        header.classList.remove("hidden");
 
-      timeline.querySelectorAll("[data-toggle]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const panel = timeline.querySelector(`#grp-${btn.dataset.toggle}`);
-          const caret = btn.querySelector("[data-caret]");
-          const hidden = panel.classList.toggle("hidden");
-          if (caret) caret.textContent = hidden ? "▸" : "▾";
+        const ordered = groups.slice().reverse();
+        timeline.innerHTML = `<ol class="relative border-l border-gray-200 ml-3 space-y-4">`
+          + ordered.map((g, i) => renderGroup(g, i)).join("") + `</ol>`;
+
+        timeline.querySelectorAll("[data-toggle]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const panel = timeline.querySelector(`#grp-${btn.dataset.toggle}`);
+            const caret = btn.querySelector("[data-caret]");
+            const hidden = panel.classList.toggle("hidden");
+            if (caret) caret.textContent = hidden ? "▸" : "▾";
+          });
         });
+      }).catch((err) => {
+        timeline.innerHTML = `<p class="text-sm text-red-500">Could not load history (${escapeHtml(err.message)}).</p>`;
+        header.classList.add("hidden");
       });
-    });
+    }
 
     function renderGroup(g, idx) {
       const first = g.entries[0];
@@ -357,9 +507,8 @@
         : (g.universeId != null ? `universe ${g.universeId}` : (first.UserPresenceType || "—"));
       const count = g.entries.length;
 
-      // entries within a group are chronological; show the span end ← start.
-      const start = fmtTs(first.timestamp);
-      const end = fmtTs(last.timestamp);
+      const start = fmtTs(first.timestamp_utc);
+      const end = fmtTs(last.timestamp_utc);
       const range = count > 1 && start !== end ? `${end} ← ${start}` : start;
 
       const dotColor = {
@@ -367,7 +516,6 @@
         Online: "bg-yellow-500", Offline: "bg-gray-400",
       }[first.UserPresenceType] || "bg-gray-400";
 
-      // Single-entry group: render flat, no expander.
       if (count === 1) {
         return `
           <li class="ml-4">
@@ -380,10 +528,9 @@
           </li>`;
       }
 
-      // Multi-entry group: collapsed by default, expandable.
       const inner = g.entries.slice().reverse().map((ent) => `
         <li class="flex items-center gap-2 flex-wrap py-0.5">
-          <span class="mono text-xs text-gray-400">${fmtTs(ent.timestamp)}</span>
+          <span class="mono text-xs text-gray-400">${fmtTs(ent.timestamp_utc)}</span>
           ${presenceBadge(ent.UserPresenceType)}
           ${ent.gameInstanceId ? `<span class="mono text-[10px] text-gray-300">${escapeHtml(ent.gameInstanceId)}</span>` : ""}
         </li>`).join("");
@@ -403,6 +550,21 @@
     }
 
     // ---- Boot ----
+    const comboLastSeen = createCombo("combo-lastseen", onLastSeenSelect);
+    const comboHistory = createCombo("combo-history", onHistorySelect);
+    const comboA = createCombo("combo-a", refreshOverlapSource);
+    const comboB = createCombo("combo-b", refreshOverlapSource);
+
+    document.getElementById("overlapFilter").addEventListener("input", renderOverlap);
+    document.getElementById("overlapReset").addEventListener("click", () => {
+      comboA.clear(); comboB.clear(); refreshOverlapSource();
+    });
+
+    try {
+      document.getElementById("tzLabel").textContent =
+        Intl.DateTimeFormat().resolvedOptions().timeZone || "local";
+    } catch (e) { /* leave default */ }
+
     setTab("lastseen");
     refreshHeader();
     setInterval(refreshHeader, 10000);
