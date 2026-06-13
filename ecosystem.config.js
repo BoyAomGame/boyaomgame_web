@@ -11,7 +11,7 @@ module.exports = {
     {
       name: "FriendTrack",
       script: "main.py",
-      interpreter: ".venv/bin/python",
+      interpreter: "/var/www/boyaomgame_web/friendtrack/.venv/bin/python",
       cwd: "./friendtrack",
       env: {
         FRIENDTRACK_DATA_DIR: "./data",
