@@ -15,7 +15,16 @@ import httpx
 _USERS_URL = "https://users.roblox.com/v1/users"
 _THUMBS_URL = "https://thumbnails.roblox.com/v1/users/avatar-headshot"
 _CHUNK = 100  # Roblox caps both endpoints at 100 IDs per request.
-_TIMEOUT = httpx.Timeout(10.0)
+_TIMEOUT = httpx.Timeout(15.0)
+# Roblox's edge rejects/severs connections from the default "python-httpx" UA;
+# a browser-like User-Agent is required to get past its bot protection.
+_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json",
+}
 
 # user_id (int) -> {"userId","username","displayName","avatarUrl"}
 _cache = {}
@@ -44,8 +53,8 @@ async def _fetch_names(client, ids):
                         "username": row.get("name"),
                         "displayName": row.get("displayName"),
                     }
-        except (httpx.HTTPError, ValueError) as exc:
-            print(f"[FriendTrack] Roblox name lookup failed for {len(chunk)} ids: {exc}")
+        except Exception as exc:
+            print(f"[FriendTrack] Roblox name lookup failed for {len(chunk)} ids: {exc!r}")
     return out
 
 
@@ -69,8 +78,8 @@ async def _fetch_avatars(client, ids):
                 # Only "Completed" thumbnails have a usable image URL.
                 if uid is not None and row.get("state") == "Completed":
                     out[int(uid)] = row.get("imageUrl")
-        except (httpx.HTTPError, ValueError) as exc:
-            print(f"[FriendTrack] Roblox avatar lookup failed for {len(chunk)} ids: {exc}")
+        except Exception as exc:
+            print(f"[FriendTrack] Roblox avatar lookup failed for {len(chunk)} ids: {exc!r}")
     return out
 
 
@@ -87,21 +96,35 @@ async def resolve_profiles(user_ids):
     with _cache_lock:
         missing = [uid for uid in ids if uid not in _cache]
 
+    fetched = {}  # uid -> resolved dict for this call (cached or freshly looked up)
     if missing:
-        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=_TIMEOUT, headers=_HEADERS, follow_redirects=True) as client:
             names, avatars = await asyncio.gather(
                 _fetch_names(client, missing),
                 _fetch_avatars(client, missing),
             )
-        with _cache_lock:
-            for uid in missing:
-                name = names.get(uid, {})
-                _cache[uid] = {
-                    "userId": uid,
-                    "username": name.get("username"),
-                    "displayName": name.get("displayName"),
-                    "avatarUrl": avatars.get(uid),
-                }
+        for uid in missing:
+            name = names.get(uid, {})
+            entry = {
+                "userId": uid,
+                "username": name.get("username"),
+                "displayName": name.get("displayName"),
+                "avatarUrl": avatars.get(uid),
+            }
+            fetched[uid] = entry
+            # Only cache successful resolutions, so a transient failure (e.g. a
+            # rate-limit or blocked egress) is retried on the next call instead
+            # of being remembered as a permanent "unknown".
+            if entry["username"] or entry["displayName"] or entry["avatarUrl"]:
+                with _cache_lock:
+                    _cache[uid] = entry
 
-    with _cache_lock:
-        return {str(uid): dict(_cache[uid]) for uid in ids}
+    def _entry(uid):
+        with _cache_lock:
+            if uid in _cache:
+                return dict(_cache[uid])
+        if uid in fetched:
+            return dict(fetched[uid])
+        return {"userId": uid, "username": None, "displayName": None, "avatarUrl": None}
+
+    return {str(uid): _entry(uid) for uid in ids}
