@@ -5,19 +5,30 @@ resolve them server-side and cache the results in memory for the process
 lifetime (display names and avatars change rarely). Failures degrade
 gracefully: a user we can't resolve is returned with null name/avatar so the
 frontend can fall back to showing the raw ID.
+
+Implementation note — why stdlib urllib and not httpx/requests:
+Roblox's edge silently tar-pits httpx/httpcore connections from some hosts
+(every request ReadTimeouts after the TLS handshake, while `curl` and stdlib
+`urllib` get an immediate 200 from the very same box and IP). The trigger is in
+httpcore's connection handling, not TLS or the network. Rather than fight it, we
+use urllib — which is proven to work here — and push the blocking calls onto
+worker threads so the FastAPI endpoint stays async.
+
+A browser-like User-Agent is still mandatory: Roblox's edge severs connections
+from default library UAs.
 """
 
 import asyncio
+import json
+import urllib.error
+import urllib.parse
+import urllib.request
 from threading import Lock
-
-import httpx
 
 _USERS_URL = "https://users.roblox.com/v1/users"
 _THUMBS_URL = "https://thumbnails.roblox.com/v1/users/avatar-headshot"
 _CHUNK = 100  # Roblox caps both endpoints at 100 IDs per request.
-_TIMEOUT = httpx.Timeout(15.0)
-# Roblox's edge rejects/severs connections from the default "python-httpx" UA;
-# a browser-like User-Agent is required to get past its bot protection.
+_TIMEOUT = 15  # seconds, per HTTP request
 _HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -36,17 +47,32 @@ def _chunks(items, size):
         yield items[i : i + size]
 
 
-async def _fetch_names(client, ids):
+def _request_json(url, *, params=None, body=None):
+    """Blocking HTTP request returning parsed JSON. POSTs when ``body`` is given,
+    otherwise GETs. ``params`` are appended as a query string."""
+    if params:
+        url = f"{url}?{urllib.parse.urlencode(params)}"
+    headers = dict(_HEADERS)
+    data = None
+    if body is not None:
+        data = json.dumps(body).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(
+        url, data=data, headers=headers, method="POST" if data is not None else "GET"
+    )
+    with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def _fetch_names(ids):
     """Return {id: {"username","displayName"}} for the given ids (best effort)."""
     out = {}
     for chunk in _chunks(ids, _CHUNK):
         try:
-            resp = await client.post(
-                _USERS_URL,
-                json={"userIds": chunk, "excludeBannedUsers": False},
+            payload = _request_json(
+                _USERS_URL, body={"userIds": chunk, "excludeBannedUsers": False}
             )
-            resp.raise_for_status()
-            for row in resp.json().get("data", []):
+            for row in payload.get("data", []):
                 uid = row.get("id")
                 if uid is not None:
                     out[int(uid)] = {
@@ -58,12 +84,12 @@ async def _fetch_names(client, ids):
     return out
 
 
-async def _fetch_avatars(client, ids):
+def _fetch_avatars(ids):
     """Return {id: avatarUrl} for the given ids (best effort)."""
     out = {}
     for chunk in _chunks(ids, _CHUNK):
         try:
-            resp = await client.get(
+            payload = _request_json(
                 _THUMBS_URL,
                 params={
                     "userIds": ",".join(str(i) for i in chunk),
@@ -72,8 +98,7 @@ async def _fetch_avatars(client, ids):
                     "isCircular": "true",
                 },
             )
-            resp.raise_for_status()
-            for row in resp.json().get("data", []):
+            for row in payload.get("data", []):
                 uid = row.get("targetId")
                 # Only "Completed" thumbnails have a usable image URL.
                 if uid is not None and row.get("state") == "Completed":
@@ -98,11 +123,12 @@ async def resolve_profiles(user_ids):
 
     fetched = {}  # uid -> resolved dict for this call (cached or freshly looked up)
     if missing:
-        async with httpx.AsyncClient(timeout=_TIMEOUT, headers=_HEADERS, follow_redirects=True) as client:
-            names, avatars = await asyncio.gather(
-                _fetch_names(client, missing),
-                _fetch_avatars(client, missing),
-            )
+        # urllib is blocking; run the name and avatar lookups concurrently on
+        # worker threads so the async endpoint isn't stalled.
+        names, avatars = await asyncio.gather(
+            asyncio.to_thread(_fetch_names, missing),
+            asyncio.to_thread(_fetch_avatars, missing),
+        )
         for uid in missing:
             name = names.get(uid, {})
             entry = {
