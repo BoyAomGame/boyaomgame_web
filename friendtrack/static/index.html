@@ -19,9 +19,27 @@
   </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen">
+  <!-- Simple password gate. This is a client-side-only check: the password is
+       hardcoded in the page, so anyone who reads the source can see it. That's
+       acceptable here because FriendTrack exposes no sensitive actions — it's
+       only a light deterrent against casual visitors. -->
+  <div id="authGate" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-100">
+    <form id="authForm" class="bg-white rounded-lg shadow-md border border-gray-200 p-6 w-full max-w-xs">
+      <h1 class="text-lg font-bold tracking-tight mb-1">FriendTrack</h1>
+      <p class="text-sm text-gray-500 mb-4">Enter the password to continue.</p>
+      <input id="authInput" type="password" autocomplete="current-password" placeholder="Password"
+             class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+      <p id="authError" class="text-sm text-red-500 mt-2 hidden">Incorrect password.</p>
+      <button type="submit"
+              class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded px-3 py-2">
+        Unlock
+      </button>
+    </form>
+  </div>
+
   <!-- All API/asset paths are relative ("./api/...") so the app works both at
        root "/" and behind Nginx at "/friendtrack/". -->
-  <div class="max-w-5xl mx-auto px-4 py-6">
+  <div id="appRoot" class="max-w-5xl mx-auto px-4 py-6 hidden">
 
     <!-- Header -->
     <header class="mb-6">
@@ -128,6 +146,39 @@
   </div>
 
   <script>
+    // ---- Password gate (client-side only; see note in the markup above) ----
+    const AUTH_PASSWORD = "callmeq";   // hardcoded on purpose
+    const AUTH_KEY = "ft_auth";
+    (function setupAuth() {
+      const gate = document.getElementById("authGate");
+      const appRoot = document.getElementById("appRoot");
+      const form = document.getElementById("authForm");
+      const input = document.getElementById("authInput");
+      const error = document.getElementById("authError");
+
+      function unlock() {
+        gate.classList.add("hidden");
+        appRoot.classList.remove("hidden");
+      }
+
+      if (localStorage.getItem(AUTH_KEY) === AUTH_PASSWORD) {
+        unlock();
+        return;
+      }
+
+      input.focus();
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (input.value === AUTH_PASSWORD) {
+          localStorage.setItem(AUTH_KEY, AUTH_PASSWORD);
+          unlock();
+        } else {
+          error.classList.remove("hidden");
+          input.select();
+        }
+      });
+    })();
+
     // ---- API base: relative so it works at "/" and "/friendtrack/" ----
     const API = "./api";
 
