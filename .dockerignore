@@ -1,0 +1,11 @@
+.git
+.gitignore
+node_modules
+npm-debug.log*
+.DS_Store
+.env
+*.sqlite
+website_sys/parrot_system/database.sqlite
+friendtrack/.venv
+friendtrack/__pycache__
+friendtrack/**/*.pyc
