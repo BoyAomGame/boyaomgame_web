@@ -1,0 +1,29 @@
+services:
+  web:
+    build:
+      context: .
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      PARROT_DB_PATH: /data/database.sqlite
+    volumes:
+      - parrot-db:/data
+    restart: unless-stopped
+
+  friendtrack:
+    build:
+      context: ./friendtrack
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: 8000
+      FRIENDTRACK_DATA_DIR: /app/data
+    volumes:
+      - friendtrack-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  parrot-db:
+  friendtrack-data:
