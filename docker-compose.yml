@@ -21,9 +21,8 @@ services:
       PORT: 8000
       FRIENDTRACK_DATA_DIR: /app/data
     volumes:
-      - friendtrack-data:/app/data
+      - "${FRIENDTRACK_DATA_PATH:-./friendtrack/data}:/app/data"
     restart: unless-stopped
 
 volumes:
   parrot-db:
-  friendtrack-data:
